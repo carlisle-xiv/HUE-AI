@@ -1,0 +1,24 @@
+# FastAPI and Server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.23
+sqlmodel==0.0.14
+alembic==1.12.1
+psycopg2-binary==2.9.9
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# AI/ML
+transformers==4.35.2
+torch==2.1.1
+pillow==10.1.0
+huggingface-hub==0.19.4
+
+# Utilities
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
