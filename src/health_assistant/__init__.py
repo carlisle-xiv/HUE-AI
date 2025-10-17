@@ -1,2 +1,0 @@
-# Health Assistant Feature Module
-
