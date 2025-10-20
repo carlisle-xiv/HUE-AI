@@ -64,3 +64,6 @@ models_cache/
 # Uploaded Files
 uploads/
 temp/
+hue/
+locale/
+

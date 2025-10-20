@@ -1,22 +1,22 @@
 # FastAPI and Server
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.17
 
 # Database
-sqlalchemy==2.0.23
-sqlmodel==0.0.14
-alembic==1.12.1
-psycopg2-binary==2.9.9
+sqlalchemy==2.0.35
+sqlmodel==0.0.27
+alembic==1.13.3
+psycopg2-binary==2.9.10
 
 # Environment Variables
-python-dotenv==1.0.0
+python-dotenv==1.0.1
 
 # AI/ML - HuggingFace Inference API
-huggingface-hub[inference]==0.26.0
-pillow==10.1.0
+huggingface-hub[inference]==0.26.2
+pillow==11.0.0
 
 # Utilities
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic==2.10.1
+pydantic-settings==2.6.1
 

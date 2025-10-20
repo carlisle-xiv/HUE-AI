@@ -8,7 +8,20 @@ from dotenv import load_dotenv
 
 # Import SQLModel and all models
 from sqlmodel import SQLModel
-from src.models import *
+# Import all models to ensure they're registered with SQLModel metadata
+# MIGRATION 10: Tests and MedicalRecordAccess
+import src.models.enums  # noqa: F401
+import src.models.reference  # noqa: F401
+import src.models.core  # noqa: F401
+import src.models.patients  # noqa: F401
+import src.models.doctors  # noqa: F401
+import src.models.appointments  # noqa: F401
+import src.models.prescriptions  # noqa: F401
+import src.models.pharmacy  # noqa: F401
+import src.models.insurance  # noqa: F401
+import src.models.hospitals  # noqa: F401
+import src.models.hospital_operations  # noqa: F401
+import src.models.tests  # noqa: F401
 
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
