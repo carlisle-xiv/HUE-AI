@@ -88,8 +88,14 @@ class Surgery(SQLModel, table=True):
     # Relationships
     patient: "Patient" = Relationship(back_populates="surgeries")
     hospital: "Hospital" = Relationship(back_populates="surgeries")
-    primary_surgeon: "Doctor" = Relationship(back_populates="primary_surgeries")
-    anesthesiologist: Optional["Doctor"] = Relationship(back_populates="anesthesiologist_surgeries")
+    primary_surgeon: "Doctor" = Relationship(
+        back_populates="primary_surgeries",
+        sa_relationship_kwargs={"foreign_keys": "[Surgery.primary_surgeon_id]"}
+    )
+    anesthesiologist: Optional["Doctor"] = Relationship(
+        back_populates="anesthesiologist_surgeries",
+        sa_relationship_kwargs={"foreign_keys": "[Surgery.anesthesiologist_id]"}
+    )
     operating_room: Optional["HospitalRoom"] = Relationship(back_populates="surgeries_as_operating_room")
     surgery_team: list["SurgeryTeam"] = Relationship(back_populates="surgery")
 
