@@ -48,10 +48,10 @@ class User(SQLModel, table=True):
     transactions: list["Transaction"] = Relationship(back_populates="user")
     barcode_scans: list["BarcodeScan"] = Relationship(back_populates="user")
     audit_logs: list["AuditLog"] = Relationship(back_populates="user")
-    # medical_record_accesses: list["MedicalRecordAccess"] = Relationship(  # MIGRATION 10
-    #     back_populates="accessor",
-    #     sa_relationship_kwargs={"foreign_keys": "MedicalRecordAccess.accessor_id"}
-    # )
+    medical_record_accesses: list["MedicalRecordAccess"] = Relationship(
+        back_populates="accessor",
+        sa_relationship_kwargs={"foreign_keys": "MedicalRecordAccess.accessor_id"}
+    )
 
 
 class VideoVerification(SQLModel, table=True):

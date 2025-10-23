@@ -120,6 +120,12 @@ from .tests import (
     TestResult,
 )
 
+# Import multi disease detector models - MIGRATION 11
+from .multi_disease_detector import (
+    ChatSession,
+    ChatMessage,
+)
+
 # Export all models - MIGRATION 1-3
 __all__ = [
     # Base
@@ -217,5 +223,9 @@ __all__ = [
     
     # MedicalRecordAccess - MIGRATION 10
     "MedicalRecordAccess",
+    
+    # Multi Disease Detector - MIGRATION 11
+    "ChatSession",
+    "ChatMessage",
 ]
 

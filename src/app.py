@@ -40,33 +40,14 @@ app.add_middleware(
 )
 
 
-# @app.on_event("startup")
-# async def startup_event():
-#     """
-#     Load AI models on application startup.
-#     This ensures models are ready before handling requests.
-#     """
-#     logger.info("Starting HUE-AI application...")
-#     logger.info("Loading AI models (this may take a few minutes)...")
-
-#     try:
-#         # Import and initialize model service (loads models)
-#         from src.health_assistant.model_service import model_service
-
-#         # Check model status
-#         status = model_service.health_check()
-#         logger.info(f"Model Service Status: {status}")
-
-#         if status["biomistral_ready"] and status["llava_ready"]:
-#             logger.info("✓ All AI models loaded successfully!")
-#         else:
-#             logger.warning("⚠ Some models failed to load. Service may be degraded.")
-
-#     except Exception as e:
-#         logger.error(f"✗ Failed to load AI models: {str(e)}")
-#         logger.warning(
-#             "Application will start but health assistant features may not work."
-#         )
+@app.on_event("startup")
+async def startup_event():
+    """
+    Application startup event.
+    """
+    logger.info("Starting HUE-AI application...")
+    logger.info("Multi Disease Detector using HuggingFace Inference API (openai/gpt-oss-120b)")
+    logger.info("✓ Application ready!")
 
 
 # Include API router

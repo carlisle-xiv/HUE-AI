@@ -46,6 +46,7 @@ class Patient(SQLModel, table=True):
     appointments: list["Appointment"] = Relationship(back_populates="patient")
     consultations: list["Consultation"] = Relationship(back_populates="patient")
     ai_consultations: list["AIConsultation"] = Relationship(back_populates="patient")
+    chat_sessions: list["ChatSession"] = Relationship(back_populates="patient")
     prescriptions: list["Prescription"] = Relationship(back_populates="patient")
     drug_orders: list["DrugOrder"] = Relationship(back_populates="patient")
     patient_insurance: list["PatientInsurance"] = Relationship(back_populates="patient")
@@ -144,6 +145,7 @@ if TYPE_CHECKING:
     from .reference import MedicalCode
     from .doctors import Doctor
     from .appointments import Appointment, Consultation, AIConsultation
+    from .multi_disease_detector import ChatSession
     from .prescriptions import Prescription
     from .pharmacy import DrugOrder
     from .insurance import PatientInsurance
