@@ -72,7 +72,7 @@ python main.py
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The application starts instantly using HuggingFace Inference API!
+The application starts instantly using HuggingFace Inference Providers API (new endpoint: `router.huggingface.co/hf-inference/`)!
 
 ## 🔌 API Endpoints
 

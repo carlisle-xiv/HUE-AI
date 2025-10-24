@@ -46,7 +46,7 @@ async def startup_event():
     Application startup event.
     """
     logger.info("Starting HUE-AI application...")
-    logger.info("Multi Disease Detector using HuggingFace Inference API (openai/gpt-oss-120b)")
+    logger.info("Multi Disease Detector using OpenRouter API (openai/gpt-oss-120b)")
     logger.info("✓ Application ready!")
 
 

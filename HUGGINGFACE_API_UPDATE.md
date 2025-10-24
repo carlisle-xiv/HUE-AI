@@ -1,8 +1,15 @@
-# 🎉 Multi Disease Detector - Updated to HuggingFace Inference API
+# 🎉 Multi Disease Detector - Updated to HuggingFace Inference Providers API
 
 ## ✅ What Changed
 
-The Multi Disease Detector feature has been **updated** to use **HuggingFace Inference API** instead of loading the model locally.
+The Multi Disease Detector feature has been **updated** to use **HuggingFace Inference Providers API** (the new 2025 endpoint) instead of loading the model locally.
+
+### ⚠️ Important: API Endpoint Update (January 2025)
+HuggingFace migrated to a new **Inference Providers API**:
+- **Old (deprecated)**: `api-inference.huggingface.co` ❌
+- **New (current)**: `router.huggingface.co/hf-inference/` ✅
+
+This implementation uses the **new endpoint** - no action needed on your part!
 
 ### Before (Local Model Loading)
 - ❌ Required 40-80GB RAM/VRAM

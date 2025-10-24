@@ -1,6 +1,6 @@
 """
 Service layer for Multi Disease Detector.
-Handles LLM integration via HuggingFace Inference API, context building, and session management.
+Handles LLM integration via OpenRouter API, context building, and session management.
 """
 
 import json
@@ -11,7 +11,7 @@ from typing import Optional, Tuple, List
 from uuid import UUID, uuid4
 
 from sqlmodel import Session, select, func
-from huggingface_hub import InferenceClient
+from openai import OpenAI
 from dotenv import load_dotenv
 
 from .models import ChatSession, ChatMessage
@@ -24,11 +24,10 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Configuration
-MODEL_NAME = "openai/gpt-oss-120b"  # HuggingFace model
-HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+MODEL_NAME = "openai/gpt-oss-120b"  # Model available via OpenRouter
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MAX_HISTORY_MESSAGES = 10  # Limit context window
 MAX_RESPONSE_TOKENS = 1024
-REASONING_LEVEL = "medium"  # Options: low, medium, high
 DISCLAIMER_TEXT = (
     "⚠️ **Important Disclaimer**: This is an AI health assistant and should not replace "
     "professional medical advice, diagnosis, or treatment. Always consult with a qualified "
@@ -36,31 +35,33 @@ DISCLAIMER_TEXT = (
     "call emergency services immediately."
 )
 
-# Initialize HuggingFace Inference Client
-_inference_client = None
+# Initialize OpenAI Client for OpenRouter
+_openai_client = None
 
 
-def get_inference_client() -> InferenceClient:
+def get_openai_client() -> OpenAI:
     """
-    Get or initialize the HuggingFace Inference Client.
+    Get or initialize the OpenAI client configured for OpenRouter.
     
     Returns:
-        InferenceClient instance
+        OpenAI client instance
     """
-    global _inference_client
+    global _openai_client
     
-    if _inference_client is None:
-        if not HUGGINGFACE_API_KEY:
-            logger.error("HUGGINGFACE_API_KEY not found in environment variables")
-            raise ValueError("HUGGINGFACE_API_KEY is required. Please set it in your .env file")
+    if _openai_client is None:
+        if not OPENROUTER_API_KEY:
+            logger.error("OPENROUTER_API_KEY not found in environment variables")
+            raise ValueError("OPENROUTER_API_KEY is required. Please set it in your .env file")
         
-        _inference_client = InferenceClient(
-            model=MODEL_NAME,
-            token=HUGGINGFACE_API_KEY
+        # Initialize OpenAI client with OpenRouter endpoint
+        _openai_client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENROUTER_API_KEY
         )
-        logger.info(f"Initialized HuggingFace Inference Client for model: {MODEL_NAME}")
+        logger.info(f"Initialized OpenAI client for OpenRouter with model: {MODEL_NAME}")
+        logger.info("Using OpenRouter API: https://openrouter.ai/api/v1")
     
-    return _inference_client
+    return _openai_client
 
 
 async def get_or_create_session(
@@ -261,7 +262,7 @@ def build_chat_messages(
     conversation_history: List[ChatMessage]
 ) -> List[dict]:
     """
-    Build chat messages in harmony format for gpt-oss model.
+    Build chat messages in standard OpenAI format.
     
     Args:
         user_message: Current user message
@@ -269,13 +270,12 @@ def build_chat_messages(
         conversation_history: Previous messages in the conversation
         
     Returns:
-        List of message dicts in harmony format
+        List of message dicts in OpenAI format
     """
     messages = []
     
-    # System message with reasoning level and instructions
+    # System message with instructions
     system_content = (
-        f"Reasoning: {REASONING_LEVEL}\n\n"
         "You are an AI health consultant assisting patients with health-related questions. "
         "You provide helpful, empathetic, and medically-informed responses. "
         "Always remind users that you are an AI assistant and they should consult healthcare professionals for proper diagnosis and treatment. "
@@ -309,19 +309,20 @@ def build_chat_messages(
 
 async def generate_response(messages: List[dict]) -> str:
     """
-    Generate response from the LLM via HuggingFace Inference API.
+    Generate response from the LLM via OpenRouter API.
     
     Args:
-        messages: List of message dicts in harmony format
+        messages: List of message dicts in OpenAI format
         
     Returns:
         Generated response text
     """
     try:
-        client = get_inference_client()
+        client = get_openai_client()
         
-        # Call HuggingFace Inference API with chat completion
-        response = client.chat_completion(
+        # Call OpenRouter API with chat completion
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
             messages=messages,
             max_tokens=MAX_RESPONSE_TOKENS,
             temperature=0.7,
@@ -329,12 +330,12 @@ async def generate_response(messages: List[dict]) -> str:
         )
         
         # Extract the assistant's response
-        assistant_message = response.choices[0].message.content
+        assistant_message = completion.choices[0].message.content
         
         return assistant_message.strip()
         
     except Exception as e:
-        logger.error(f"Error generating response from HuggingFace API: {str(e)}")
+        logger.error(f"Error generating response from OpenRouter API: {str(e)}")
         return "I apologize, but I encountered an error while processing your request. Please try again later."
 
 

@@ -131,15 +131,17 @@ Array of medical conditions:
 - ai_recommendations
 - risk_assessment
 
-## HuggingFace Inference API
+## HuggingFace Inference Providers API
 
-The feature uses HuggingFace's Inference API to access the `openai/gpt-oss-120b` model:
+The feature uses HuggingFace's **Inference Providers API** (new endpoint as of 2025) to access the `openai/gpt-oss-120b` model:
 
 1. No model loading required - instant startup
-2. API calls to HuggingFace infrastructure
+2. API calls to HuggingFace infrastructure at `router.huggingface.co/hf-inference/`
 3. No local GPU/VRAM requirements
 4. Harmony response format automatically applied
 5. Configurable reasoning levels
+
+**Note:** The feature uses the new Inference Providers API endpoint (router.huggingface.co) instead of the deprecated api-inference.huggingface.co endpoint.
 
 ### Configuration
 

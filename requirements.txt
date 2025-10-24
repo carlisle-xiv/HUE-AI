@@ -12,8 +12,8 @@ psycopg2-binary==2.9.10
 # Environment Variables
 python-dotenv==1.0.1
 
-# AI/ML - HuggingFace Inference API
-huggingface-hub[inference]==0.26.2
+# AI/ML - OpenRouter via OpenAI Client
+openai>=1.0.0
 pillow==11.0.0
 
 # Utilities
