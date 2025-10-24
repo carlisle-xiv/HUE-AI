@@ -140,16 +140,16 @@ def build_context_from_data(request: ChatRequest) -> str:
     if request.consultation_data:
         cd = request.consultation_data
         consultation_info = []
-        if cd.chief_complaint:
-            consultation_info.append(f"Chief Complaint: {cd.chief_complaint}")
-        if cd.history_of_present_illness:
-            consultation_info.append(f"History: {cd.history_of_present_illness}")
-        if cd.assessment:
-            consultation_info.append(f"Assessment: {cd.assessment}")
-        if cd.treatment_plan:
-            consultation_info.append(f"Treatment Plan: {cd.treatment_plan}")
-        if cd.doctor_notes:
-            consultation_info.append(f"Doctor Notes: {cd.doctor_notes}")
+        if cd.get('chief_complaint'):
+            consultation_info.append(f"Chief Complaint: {cd['chief_complaint']}")
+        if cd.get('history_of_present_illness'):
+            consultation_info.append(f"History: {cd['history_of_present_illness']}")
+        if cd.get('assessment'):
+            consultation_info.append(f"Assessment: {cd['assessment']}")
+        if cd.get('treatment_plan'):
+            consultation_info.append(f"Treatment Plan: {cd['treatment_plan']}")
+        if cd.get('doctor_notes'):
+            consultation_info.append(f"Doctor Notes: {cd['doctor_notes']}")
         
         if consultation_info:
             context_parts.append("=== Recent Consultation ===\n" + "\n".join(consultation_info))
@@ -158,58 +158,58 @@ def build_context_from_data(request: ChatRequest) -> str:
     if request.vitals_data:
         vd = request.vitals_data
         vitals_info = []
-        if vd.blood_type:
-            vitals_info.append(f"Blood Type: {vd.blood_type}")
-        if vd.blood_pressure_systolic and vd.blood_pressure_diastolic:
-            vitals_info.append(f"Blood Pressure: {vd.blood_pressure_systolic}/{vd.blood_pressure_diastolic} mmHg")
-        if vd.heart_rate_bpm:
-            vitals_info.append(f"Heart Rate: {vd.heart_rate_bpm} bpm")
-        if vd.temperature_celsius:
-            vitals_info.append(f"Temperature: {vd.temperature_celsius}°C")
-        if vd.respiratory_rate:
-            vitals_info.append(f"Respiratory Rate: {vd.respiratory_rate} breaths/min")
-        if vd.oxygen_saturation:
-            vitals_info.append(f"Oxygen Saturation: {vd.oxygen_saturation}%")
-        if vd.glucose_level:
-            vitals_info.append(f"Glucose Level: {vd.glucose_level} mg/dL")
-        if vd.weight_kg:
-            vitals_info.append(f"Weight: {vd.weight_kg} kg")
-        if vd.height_cm:
-            vitals_info.append(f"Height: {vd.height_cm} cm")
-        if vd.bmi:
-            vitals_info.append(f"BMI: {vd.bmi}")
+        if vd.get('blood_type'):
+            vitals_info.append(f"Blood Type: {vd['blood_type']}")
+        if vd.get('blood_pressure_systolic') and vd.get('blood_pressure_diastolic'):
+            vitals_info.append(f"Blood Pressure: {vd['blood_pressure_systolic']}/{vd['blood_pressure_diastolic']} mmHg")
+        if vd.get('heart_rate_bpm'):
+            vitals_info.append(f"Heart Rate: {vd['heart_rate_bpm']} bpm")
+        if vd.get('temperature_celsius'):
+            vitals_info.append(f"Temperature: {vd['temperature_celsius']}°C")
+        if vd.get('respiratory_rate'):
+            vitals_info.append(f"Respiratory Rate: {vd['respiratory_rate']} breaths/min")
+        if vd.get('oxygen_saturation'):
+            vitals_info.append(f"Oxygen Saturation: {vd['oxygen_saturation']}%")
+        if vd.get('glucose_level'):
+            vitals_info.append(f"Glucose Level: {vd['glucose_level']} mg/dL")
+        if vd.get('weight_kg'):
+            vitals_info.append(f"Weight: {vd['weight_kg']} kg")
+        if vd.get('height_cm'):
+            vitals_info.append(f"Height: {vd['height_cm']} cm")
+        if vd.get('bmi'):
+            vitals_info.append(f"BMI: {vd['bmi']}")
         
         if vitals_info:
             context_parts.append("=== Vital Signs ===\n" + "\n".join(vitals_info))
     
     # Add habits data
-    if request.habits_data and request.habits_data.habits:
+    if request.habits_data and request.habits_data.get('habits'):
         habits_info = []
-        for habit in request.habits_data.habits:
-            habit_str = f"- {habit.habit_type}"
-            if habit.actual_value and habit.target_value:
-                habit_str += f": {habit.actual_value}/{habit.target_value} {habit.target_unit or ''}"
-            elif habit.actual_value:
-                habit_str += f": {habit.actual_value} {habit.target_unit or ''}"
-            if habit.notes:
-                habit_str += f" ({habit.notes})"
+        for habit in request.habits_data['habits']:
+            habit_str = f"- {habit.get('habit_type', 'Unknown')}"
+            if habit.get('actual_value') and habit.get('target_value'):
+                habit_str += f": {habit['actual_value']}/{habit['target_value']} {habit.get('target_unit', '')}"
+            elif habit.get('actual_value'):
+                habit_str += f": {habit['actual_value']} {habit.get('target_unit', '')}"
+            if habit.get('notes'):
+                habit_str += f" ({habit['notes']})"
             habits_info.append(habit_str)
         
         if habits_info:
             context_parts.append("=== Patient Habits ===\n" + "\n".join(habits_info))
     
     # Add conditions data
-    if request.conditions_data and request.conditions_data.conditions:
+    if request.conditions_data and request.conditions_data.get('conditions'):
         conditions_info = []
-        for condition in request.conditions_data.conditions:
-            cond_str = f"- {condition.condition_name}"
-            if condition.status:
-                cond_str += f" (Status: {condition.status}"
-                if condition.severity:
-                    cond_str += f", Severity: {condition.severity}"
+        for condition in request.conditions_data['conditions']:
+            cond_str = f"- {condition.get('condition_name', 'Unknown')}"
+            if condition.get('status'):
+                cond_str += f" (Status: {condition['status']}"
+                if condition.get('severity'):
+                    cond_str += f", Severity: {condition['severity']}"
                 cond_str += ")"
-            if condition.notes:
-                cond_str += f"\n  Notes: {condition.notes}"
+            if condition.get('notes'):
+                cond_str += f"\n  Notes: {condition['notes']}"
             conditions_info.append(cond_str)
         
         if conditions_info:
@@ -219,14 +219,14 @@ def build_context_from_data(request: ChatRequest) -> str:
     if request.ai_consultation_data:
         acd = request.ai_consultation_data
         ai_info = []
-        if acd.symptoms_described:
-            ai_info.append(f"Previous Symptoms: {acd.symptoms_described}")
-        if acd.ai_suggested_conditions:
-            ai_info.append(f"Suggested Conditions: {json.dumps(acd.ai_suggested_conditions)}")
-        if acd.ai_recommendations:
-            ai_info.append(f"Previous Recommendations: {acd.ai_recommendations}")
-        if acd.risk_assessment:
-            ai_info.append(f"Risk Assessment: {acd.risk_assessment}")
+        if acd.get('symptoms_described'):
+            ai_info.append(f"Previous Symptoms: {acd['symptoms_described']}")
+        if acd.get('ai_suggested_conditions'):
+            ai_info.append(f"Suggested Conditions: {json.dumps(acd['ai_suggested_conditions'])}")
+        if acd.get('ai_recommendations'):
+            ai_info.append(f"Previous Recommendations: {acd['ai_recommendations']}")
+        if acd.get('risk_assessment'):
+            ai_info.append(f"Risk Assessment: {acd['risk_assessment']}")
         
         if ai_info:
             context_parts.append("=== Previous AI Consultation ===\n" + "\n".join(ai_info))
