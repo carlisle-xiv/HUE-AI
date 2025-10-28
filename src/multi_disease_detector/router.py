@@ -151,7 +151,7 @@ async def get_patient_sessions(
 
 
 @router.get("/sessions/{session_id}/history", response_model=SessionHistoryResponse)
-async def get_session_history(
+async def get_session_history_endpoint(
     session_id: UUID,
     db: Session = Depends(get_db)
 ) -> SessionHistoryResponse:
@@ -405,6 +405,10 @@ async def chat_stream(
                     # Format as SSE
                     event_type = event.get("type", "message")
                     event_data = event.get("data")
+                    
+                    # Add session_id to done event for conversation continuity
+                    if event_type == "done" and isinstance(event_data, dict):
+                        event_data["session_id"] = str(session.id)
                     
                     # Serialize event data
                     sse_data = json.dumps({
