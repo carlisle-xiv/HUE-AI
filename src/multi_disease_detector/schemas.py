@@ -164,3 +164,145 @@ class SessionListResponse(BaseModel):
     """List of sessions for a patient"""
     sessions: List[SessionResponse]
     total: int
+
+
+# ===== STREAMING AND TOOL CALLING SCHEMAS =====
+
+class ToolCallInfo(BaseModel):
+    """Information about a tool call"""
+    tool_name: str = Field(..., description="Name of the tool being called")
+    arguments: Dict[str, Any] = Field(..., description="Arguments passed to the tool")
+    call_id: str = Field(..., description="Unique identifier for this tool call")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "tool_name": "tavily_web_search",
+                "arguments": {"query": "latest cholesterol treatment guidelines", "search_depth": "basic"},
+                "call_id": "call_abc123"
+            }
+        }
+    )
+
+
+class ToolResultInfo(BaseModel):
+    """Result from a tool execution"""
+    tool_name: str = Field(..., description="Name of the tool that was executed")
+    call_id: str = Field(..., description="Tool call ID this result corresponds to")
+    result: str = Field(..., description="Tool execution result (JSON string)")
+    success: bool = Field(..., description="Whether the tool executed successfully")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "tool_name": "tavily_web_search",
+                "call_id": "call_abc123",
+                "result": '{"query": "cholesterol guidelines", "results": [...]}',
+                "success": True
+            }
+        }
+    )
+
+
+class ArtifactSection(BaseModel):
+    """Section within an artifact document"""
+    heading: str = Field(..., description="Section heading")
+    content: str = Field(..., description="Section content")
+    data: Optional[Dict[str, Any]] = Field(None, description="Optional structured data for this section")
+
+
+class ArtifactContent(BaseModel):
+    """Content structure of an artifact"""
+    sections: List[ArtifactSection] = Field(..., description="Document sections")
+    metadata: Dict[str, Any] = Field(..., description="Document metadata")
+
+
+class ArtifactResponse(BaseModel):
+    """Structured artifact document"""
+    type: str = Field(..., description="Artifact type: lab_explanation, imaging_analysis, medical_summary")
+    title: str = Field(..., description="Document title")
+    content: ArtifactContent = Field(..., description="Document content")
+    pdf_ready: bool = Field(True, description="Whether PDF generation is available")
+    created_at: str = Field(..., description="Creation timestamp")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "type": "lab_explanation",
+                "title": "Lipid Panel Results Explanation",
+                "content": {
+                    "sections": [
+                        {
+                            "heading": "Overview",
+                            "content": "This is a lipid panel test...",
+                            "data": {"Total Cholesterol": "240 mg/dL", "LDL": "160 mg/dL"}
+                        }
+                    ],
+                    "metadata": {
+                        "generated_at": "2025-10-27T10:00:00",
+                        "generator": "HUE AI"
+                    }
+                },
+                "pdf_ready": True,
+                "created_at": "2025-10-27T10:00:00"
+            }
+        }
+    )
+
+
+class StreamEventType(str):
+    """Types of streaming events"""
+    THINKING = "thinking"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"
+    CONTENT = "content"
+    ARTIFACT = "artifact"
+    DONE = "done"
+    ERROR = "error"
+
+
+class StreamEvent(BaseModel):
+    """Server-Sent Event for streaming responses"""
+    event: str = Field(..., description="Event type: thinking, tool_call, tool_result, content, artifact, done, error")
+    data: Any = Field(..., description="Event data (type varies by event)")
+    timestamp: Optional[str] = Field(None, description="Event timestamp")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "event": "thinking",
+                "data": "Analyzing your lab results to provide interpretation...",
+                "timestamp": "2025-10-27T10:00:00"
+            }
+        }
+    )
+
+
+class ChatResponseWithArtifacts(ChatResponse):
+    """Extended chat response that includes artifacts"""
+    artifacts: Optional[List[ArtifactResponse]] = Field(None, description="Generated artifacts (documents)")
+    tools_used: Optional[List[str]] = Field(None, description="List of tools used in generation")
+    thinking_summary: Optional[str] = Field(None, description="Summary of AI's thinking process")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "session_id": "660e8400-e29b-41d4-a716-446655440000",
+                "message": "Based on your lipid panel results and current guidelines...",
+                "risk_assessment": "MEDIUM",
+                "should_see_doctor": True,
+                "disclaimer": "⚠️ **Important Disclaimer**: This is an AI assistant...",
+                "artifacts": [
+                    {
+                        "type": "lab_explanation",
+                        "title": "Lipid Panel Results Explanation",
+                        "content": {"sections": [], "metadata": {}},
+                        "pdf_ready": True,
+                        "created_at": "2025-10-27T10:00:00"
+                    }
+                ],
+                "tools_used": ["tavily_web_search", "generate_lab_explanation"],
+                "thinking_summary": "Searched for current cholesterol guidelines and generated detailed explanation"
+            }
+        }
+    )

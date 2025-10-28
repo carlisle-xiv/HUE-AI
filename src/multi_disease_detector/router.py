@@ -2,11 +2,13 @@
 FastAPI router for Multi Disease Detector endpoints.
 """
 
+import json
 import logging
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select, func
 
 from src.database import get_db
@@ -14,12 +16,21 @@ from .models import ChatSession, ChatMessage
 from .schemas import (
     ChatRequest,
     ChatResponse,
+    ChatResponseWithArtifacts,
     SessionResponse,
     SessionListResponse,
     SessionHistoryResponse,
     MessageHistory
 )
-from .service import process_chat_request
+from .service import (
+    process_chat_request,
+    process_chat_request_with_tools,
+    generate_response_with_tools,
+    get_or_create_session,
+    build_context_from_data,
+    get_session_history,
+    build_chat_messages
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -284,4 +295,244 @@ async def delete_session(
 
 # Import datetime for close_session
 from datetime import datetime
+
+
+# ===== NEW ENDPOINTS WITH TOOL CALLING AND STREAMING =====
+
+@router.post("/chat/with-tools", response_model=ChatResponseWithArtifacts, status_code=status.HTTP_200_OK)
+async def chat_with_tools(
+    request: ChatRequest,
+    session_id: Optional[UUID] = None,
+    db: Session = Depends(get_db)
+) -> ChatResponseWithArtifacts:
+    """
+    Enhanced chat endpoint with tool calling support (web search, document generation).
+    
+    This endpoint enables the AI to:
+    - Search the web for current medical information (Tavily)
+    - Generate detailed lab result explanations
+    - Generate imaging analysis documents
+    - Generate medical summaries
+    
+    **Query Parameters:**
+    - **session-id** (optional): Session UUID for ongoing conversations
+    
+    **Request Body:**
+    - **message**: User's message/prompt (REQUIRED)
+    - **patient_id**: Patient UUID for tracking
+    - All context data fields are optional (same as /chat endpoint)
+    
+    **Returns:** 
+    - AI-generated response with risk assessment
+    - List of tools used
+    - Thinking process summary
+    - References to any generated artifacts
+    """
+    try:
+        request.session_id = session_id
+        response = await process_chat_request_with_tools(db=db, request=request)
+        return response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error in chat/with-tools endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    request: ChatRequest,
+    session_id: Optional[UUID] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Streaming chat endpoint that shows AI's thinking process in real-time.
+    
+    Returns Server-Sent Events (SSE) with different event types:
+    - **thinking**: AI's reasoning process
+    - **tool_call**: When AI decides to use a tool
+    - **tool_result**: Results from tool execution
+    - **content**: AI's response content (streamed token by token)
+    - **done**: Final completion event
+    - **error**: Error occurred
+    
+    **Query Parameters:**
+    - **session-id** (optional): Session UUID for ongoing conversations
+    
+    **Request Body:** Same as /chat endpoint
+    
+    **Usage Example (JavaScript):**
+    ```javascript
+    const eventSource = new EventSource('/api/v1/multi-disease-detector/chat/stream');
+    eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log(data.type, data.data);
+    };
+    ```
+    """
+    try:
+        # Get or create session
+        session = await get_or_create_session(
+            db=db,
+            session_id=session_id,
+            patient_id=request.patient_id,
+            first_message=request.message
+        )
+        
+        # Build patient context
+        patient_context = build_context_from_data(request)
+        
+        # Get conversation history
+        conversation_history = await get_session_history(db, session.id)
+        
+        # Build chat messages
+        messages = build_chat_messages(
+            user_message=request.message,
+            patient_context=patient_context,
+            conversation_history=conversation_history
+        )
+        
+        # Stream generator
+        async def event_generator():
+            try:
+                async for event in generate_response_with_tools(messages, enable_streaming=True):
+                    # Format as SSE
+                    event_type = event.get("type", "message")
+                    event_data = event.get("data")
+                    
+                    # Serialize event data
+                    sse_data = json.dumps({
+                        "type": event_type,
+                        "data": event_data,
+                        "timestamp": event.get("timestamp")
+                    })
+                    
+                    yield f"data: {sse_data}\n\n"
+                    
+                    # If done, close stream
+                    if event_type == "done":
+                        break
+            
+            except Exception as e:
+                logger.error(f"Error in stream generator: {str(e)}")
+                error_event = json.dumps({
+                    "type": "error",
+                    "data": f"Error: {str(e)}",
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                yield f"data: {error_event}\n\n"
+        
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"  # Disable proxy buffering
+            }
+        )
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error in chat/stream endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while setting up the stream"
+        )
+
+
+@router.post("/artifacts/generate-pdf")
+async def generate_artifact_pdf(
+    artifact_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a PDF from artifact data.
+    
+    **Request Body:** Artifact structure (from chat response artifacts field)
+    
+    **Returns:** PDF file as downloadable binary
+    
+    **Note:** Requires WeasyPrint system libraries. Use /artifacts/to-html if PDF not available.
+    """
+    try:
+        # Import artifacts locally
+        from . import artifacts
+        
+        # Check if PDF generation is available
+        if not artifacts.is_pdf_available():
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail=(
+                    "PDF generation not available. WeasyPrint system libraries not installed. "
+                    "Install with: brew install pango cairo gdk-pixbuf libffi (macOS). "
+                    "Use /artifacts/to-html for HTML output instead."
+                )
+            )
+        
+        # Generate PDF
+        pdf_bytes = artifacts.artifact_to_pdf(artifact_data)
+        
+        # Return as downloadable file
+        from fastapi.responses import Response
+        
+        filename = artifact_data.get("title", "medical_document").replace(" ", "_")
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.pdf"'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating PDF: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating PDF: {str(e)}"
+        )
+
+
+@router.post("/artifacts/to-html")
+async def artifact_to_html_endpoint(
+    artifact_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Convert artifact to HTML for display.
+    
+    **Request Body:** Artifact structure
+    
+    **Returns:** HTML string with styling
+    """
+    try:
+        # Import artifacts locally
+        from . import artifacts
+        
+        html_content = artifacts.artifact_to_html(artifact_data)
+        
+        return {
+            "html": html_content,
+            "success": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Error converting to HTML: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error converting to HTML: {str(e)}"
+        )
 
