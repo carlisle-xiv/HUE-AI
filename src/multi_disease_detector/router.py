@@ -406,6 +406,10 @@ async def chat_stream(
                     event_type = event.get("type", "message")
                     event_data = event.get("data")
                     
+                    # Add session_id to done event for conversation continuity
+                    if event_type == "done" and isinstance(event_data, dict):
+                        event_data["session_id"] = str(session.id)
+                    
                     # Serialize event data
                     sse_data = json.dumps({
                         "type": event_type,
