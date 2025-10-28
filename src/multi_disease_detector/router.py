@@ -151,7 +151,7 @@ async def get_patient_sessions(
 
 
 @router.get("/sessions/{session_id}/history", response_model=SessionHistoryResponse)
-async def get_session_history(
+async def get_session_history_endpoint(
     session_id: UUID,
     db: Session = Depends(get_db)
 ) -> SessionHistoryResponse:
