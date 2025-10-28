@@ -4,6 +4,7 @@ Main FastAPI application setup.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from scalar_fastapi import get_scalar_api_reference
 from dotenv import load_dotenv
 import os
 import logging
@@ -52,6 +53,15 @@ async def startup_event():
 
 # Include API router
 app.include_router(api_router)
+
+
+@app.get("/scalar", include_in_schema=False)
+async def scalar_html():
+    """Scalar API documentation"""
+    return get_scalar_api_reference(
+        openapi_url=app.openapi_url,
+        title=app.title,
+    )
 
 
 @app.get("/", response_model=HealthCheck)
