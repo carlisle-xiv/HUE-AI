@@ -126,17 +126,33 @@ async def get_or_create_session(
         return new_session
 
 
-def build_context_from_data(request: ChatRequest) -> str:
+def build_context_from_data(request: ChatRequest, image_interpretation: Optional[Dict[str, Any]] = None) -> str:
     """
     Build patient context string from optional input data.
     
     Args:
         request: ChatRequest with optional patient data
+        image_interpretation: Optional image analysis from GPT-5 vision
         
     Returns:
         Formatted context string
     """
     context_parts = []
+    
+    # Add image analysis if available
+    if image_interpretation:
+        image_info = []
+        if image_interpretation.get('description'):
+            image_info.append(f"Visual Observation: {image_interpretation['description']}")
+        if image_interpretation.get('structured_findings'):
+            findings = image_interpretation['structured_findings']
+            if findings:
+                image_info.append(f"Structured Findings: {json.dumps(findings, indent=2)}")
+        if image_interpretation.get('confidence'):
+            image_info.append(f"Analysis Confidence: {image_interpretation['confidence']}")
+        
+        if image_info:
+            context_parts.append("=== Image Analysis ===\n" + "\n".join(image_info))
     
     # Add consultation data
     if request.consultation_data:
@@ -431,13 +447,18 @@ async def save_chat_exchange(
     logger.info(f"Saved chat exchange for session {session_id}")
 
 
-async def process_chat_request(db: Session, request: ChatRequest) -> ChatResponse:
+async def process_chat_request(
+    db: Session, 
+    request: ChatRequest,
+    image_interpretation: Optional[Dict[str, Any]] = None
+) -> ChatResponse:
     """
     Main function to process a chat request.
     
     Args:
         db: Database session
         request: Chat request data (session_id comes from query parameter)
+        image_interpretation: Optional image analysis from GPT-5 vision
         
     Returns:
         ChatResponse with AI-generated reply
@@ -452,8 +473,8 @@ async def process_chat_request(db: Session, request: ChatRequest) -> ChatRespons
             first_message=request.message
         )
         
-        # Step 2: Build patient context from optional data
-        patient_context = build_context_from_data(request)
+        # Step 2: Build patient context from optional data (including image interpretation)
+        patient_context = build_context_from_data(request, image_interpretation)
         
         # Step 3: Get conversation history
         conversation_history = await get_session_history(db, session.id)
@@ -799,7 +820,8 @@ async def generate_response_with_tools(
 async def process_chat_request_with_tools(
     db: Session,
     request: ChatRequest,
-    enable_streaming: bool = False
+    enable_streaming: bool = False,
+    image_interpretation: Optional[Dict[str, Any]] = None
 ) -> ChatResponseWithArtifacts:
     """
     Process chat request with tool calling support.
@@ -809,6 +831,7 @@ async def process_chat_request_with_tools(
         db: Database session
         request: Chat request data
         enable_streaming: Whether to enable streaming (for internal use)
+        image_interpretation: Optional image analysis from GPT-5 vision
         
     Returns:
         ChatResponseWithArtifacts with AI-generated reply and any artifacts
@@ -822,8 +845,8 @@ async def process_chat_request_with_tools(
             first_message=request.message
         )
         
-        # Step 2: Build patient context
-        patient_context = build_context_from_data(request)
+        # Step 2: Build patient context (including image interpretation)
+        patient_context = build_context_from_data(request, image_interpretation)
         
         # Step 3: Get conversation history
         conversation_history = await get_session_history(db, session.id)
@@ -877,7 +900,8 @@ async def process_chat_request_with_tools(
             assistant_message=final_message,
             risk_assessment=risk_level,
             tools_used=tools_used,
-            thinking_summary=" → ".join(thinking_steps) if thinking_steps else None
+            thinking_summary=" → ".join(thinking_steps) if thinking_steps else None,
+            image_interpretation=image_interpretation
         )
         
         # Step 8: Return response with artifacts
@@ -904,7 +928,8 @@ async def save_chat_exchange_with_metadata(
     assistant_message: str,
     risk_assessment: str,
     tools_used: Optional[List[str]] = None,
-    thinking_summary: Optional[str] = None
+    thinking_summary: Optional[str] = None,
+    image_interpretation: Optional[Dict[str, Any]] = None
 ) -> None:
     """
     Save chat exchange with extended metadata.
@@ -917,27 +942,41 @@ async def save_chat_exchange_with_metadata(
         risk_assessment: Calculated risk level
         tools_used: List of tools used
         thinking_summary: Summary of thinking process
+        image_interpretation: Optional image analysis from GPT-5 vision
     """
+    # Build user message metadata
+    user_metadata = {}
+    if image_interpretation:
+        user_metadata["image_interpretation"] = image_interpretation
+        user_metadata["has_image"] = True
+    
     # Save user message
     user_msg = ChatMessage(
         session_id=session_id,
         role="USER",
         content=user_message,
+        message_metadata=user_metadata if user_metadata else None,
         created_at=datetime.utcnow()
     )
     db.add(user_msg)
     
     # Save assistant message with extended metadata
+    assistant_metadata = {
+        "risk_assessment": risk_assessment,
+        "tools_used": tools_used or [],
+        "thinking_summary": thinking_summary,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    # Reference to image interpretation if it was provided
+    if image_interpretation:
+        assistant_metadata["referenced_image"] = True
+    
     assistant_msg = ChatMessage(
         session_id=session_id,
         role="ASSISTANT",
         content=assistant_message,
-        message_metadata={
-            "risk_assessment": risk_assessment,
-            "tools_used": tools_used or [],
-            "thinking_summary": thinking_summary,
-            "timestamp": datetime.utcnow().isoformat()
-        },
+        message_metadata=assistant_metadata,
         created_at=datetime.utcnow()
     )
     db.add(assistant_msg)

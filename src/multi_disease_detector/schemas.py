@@ -259,11 +259,20 @@ class StreamEventType(str):
     ARTIFACT = "artifact"
     DONE = "done"
     ERROR = "error"
+    # Image processing events
+    IMAGE_VALIDATION = "image_validation"
+    IMAGE_PROCESSING = "image_processing"
+    VISION_ANALYSIS = "vision_analysis"
+    VISION_COMPLETE = "vision_complete"
 
 
 class StreamEvent(BaseModel):
     """Server-Sent Event for streaming responses"""
-    event: str = Field(..., description="Event type: thinking, tool_call, tool_result, content, artifact, done, error")
+    event: str = Field(
+        ..., 
+        description="Event type: thinking, tool_call, tool_result, content, artifact, done, error, "
+                   "image_validation, image_processing, vision_analysis, vision_complete"
+    )
     data: Any = Field(..., description="Event data (type varies by event)")
     timestamp: Optional[str] = Field(None, description="Event timestamp")
     
@@ -273,6 +282,33 @@ class StreamEvent(BaseModel):
                 "event": "thinking",
                 "data": "Analyzing your lab results to provide interpretation...",
                 "timestamp": "2025-10-27T10:00:00"
+            }
+        }
+    )
+
+
+class ImageInterpretation(BaseModel):
+    """Structure for GPT-5 vision output"""
+    description: str = Field(..., description="Detailed narrative description of the image")
+    structured_findings: Dict[str, Any] = Field(..., description="Structured medical findings from the image")
+    confidence: str = Field(..., description="Confidence level: HIGH, MEDIUM, LOW")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Analysis metadata (model, timestamp, etc.)")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "description": "The image shows a skin lesion on the forearm with irregular borders and varied pigmentation...",
+                "structured_findings": {
+                    "location": "forearm",
+                    "size_estimate": "approximately 5mm diameter",
+                    "characteristics": ["irregular borders", "color variation", "asymmetric"],
+                    "visible_symptoms": ["redness around lesion"]
+                },
+                "confidence": "MEDIUM - Image quality is good but professional dermatological examination recommended",
+                "metadata": {
+                    "model": "openai/gpt-4o",
+                    "timestamp": "2025-10-30T10:00:00"
+                }
             }
         }
     )

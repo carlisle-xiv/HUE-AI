@@ -7,7 +7,7 @@ import logging
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select, func
 
@@ -45,7 +45,14 @@ router = APIRouter(
 
 @router.post("/chat", response_model=ChatResponse, status_code=status.HTTP_200_OK)
 async def chat_with_ai(
-    request: ChatRequest,
+    message: str = Form(...),
+    patient_id: Optional[str] = Form(None),
+    consultation_data: Optional[str] = Form(None),
+    vitals_data: Optional[str] = Form(None),
+    habits_data: Optional[str] = Form(None),
+    conditions_data: Optional[str] = Form(None),
+    ai_consultation_data: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
     session_id: Optional[UUID] = None,
     db: Session = Depends(get_db)
 ) -> ChatResponse:
@@ -55,22 +62,81 @@ async def chat_with_ai(
     **Query Parameters:**
     - **session-id** (optional): Session UUID for ongoing conversations. Omit for new sessions.
     
-    **Request Body (only 'message' is required, all else optional):**
+    **Request Body (multipart/form-data - only 'message' is required):**
     - **message**: User's message/prompt (REQUIRED)
     - **patient_id**: Patient UUID for tracking
-    - **consultation_data**: Recent consultation information (ALL fields optional)
-    - **vitals_data**: Latest vital signs (ALL fields optional)
-    - **habits_data**: Patient habits tracking (ALL fields optional)
-    - **conditions_data**: Active medical conditions (ALL fields optional)
-    - **ai_consultation_data**: Previous AI consultation data (ALL fields optional)
+    - **image**: Optional medical image (JPEG, PNG, WEBP, max 20MB) 
+    - **consultation_data**: Recent consultation information as JSON string
+    - **vitals_data**: Latest vital signs as JSON string
+    - **habits_data**: Patient habits tracking as JSON string
+    - **conditions_data**: Active medical conditions as JSON string
+    - **ai_consultation_data**: Previous AI consultation data as JSON string
     
     **Returns:** AI-generated response with risk assessment and medical disclaimer.
+    
+    **Note:** When uploading an image, use multipart/form-data encoding.
     """
     try:
-        # Inject session_id from query parameter into request
-        request.session_id = session_id
-        response = await process_chat_request(db=db, request=request)
+        # Import vision service
+        from .vision_service import analyze_medical_image
+        from .image_utils import ImageValidationError
+        
+        # Process image if provided
+        image_interpretation = None
+        if image:
+            try:
+                logger.info(f"Processing uploaded image: {image.filename}")
+                image_bytes = await image.read()
+                image_interpretation = await analyze_medical_image(
+                    image_bytes=image_bytes,
+                    user_context=message[:200],  # Use truncated message as context
+                    filename=image.filename
+                )
+                logger.info("Image analysis completed successfully")
+            except ImageValidationError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Image validation failed: {str(e)}"
+                )
+            except Exception as e:
+                logger.error(f"Error processing image: {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to process image: {str(e)}"
+                )
+        
+        # Parse JSON strings from form data
+        parsed_consultation_data = json.loads(consultation_data) if consultation_data else None
+        parsed_vitals_data = json.loads(vitals_data) if vitals_data else None
+        parsed_habits_data = json.loads(habits_data) if habits_data else None
+        parsed_conditions_data = json.loads(conditions_data) if conditions_data else None
+        parsed_ai_consultation_data = json.loads(ai_consultation_data) if ai_consultation_data else None
+        
+        # Parse patient_id if provided
+        parsed_patient_id = UUID(patient_id) if patient_id else None
+        
+        # Build ChatRequest object
+        request = ChatRequest(
+            message=message,
+            patient_id=parsed_patient_id,
+            session_id=session_id,
+            consultation_data=parsed_consultation_data,
+            vitals_data=parsed_vitals_data,
+            habits_data=parsed_habits_data,
+            conditions_data=parsed_conditions_data,
+            ai_consultation_data=parsed_ai_consultation_data
+        )
+        
+        # Process chat request with optional image interpretation
+        response = await process_chat_request(
+            db=db, 
+            request=request,
+            image_interpretation=image_interpretation
+        )
         return response
+        
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -301,7 +367,14 @@ from datetime import datetime
 
 @router.post("/chat/with-tools", response_model=ChatResponseWithArtifacts, status_code=status.HTTP_200_OK)
 async def chat_with_tools(
-    request: ChatRequest,
+    message: str = Form(...),
+    patient_id: Optional[str] = Form(None),
+    consultation_data: Optional[str] = Form(None),
+    vitals_data: Optional[str] = Form(None),
+    habits_data: Optional[str] = Form(None),
+    conditions_data: Optional[str] = Form(None),
+    ai_consultation_data: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
     session_id: Optional[UUID] = None,
     db: Session = Depends(get_db)
 ) -> ChatResponseWithArtifacts:
@@ -313,14 +386,16 @@ async def chat_with_tools(
     - Generate detailed lab result explanations
     - Generate imaging analysis documents
     - Generate medical summaries
+    - **Analyze medical images with GPT-5 vision**
     
     **Query Parameters:**
     - **session-id** (optional): Session UUID for ongoing conversations
     
-    **Request Body:**
+    **Request Body (multipart/form-data):**
     - **message**: User's message/prompt (REQUIRED)
     - **patient_id**: Patient UUID for tracking
-    - All context data fields are optional (same as /chat endpoint)
+    - **image**: Optional medical image (JPEG, PNG, WEBP, max 20MB)
+    - All context data fields as JSON strings (optional)
     
     **Returns:** 
     - AI-generated response with risk assessment
@@ -329,9 +404,64 @@ async def chat_with_tools(
     - References to any generated artifacts
     """
     try:
-        request.session_id = session_id
-        response = await process_chat_request_with_tools(db=db, request=request)
+        # Import vision service
+        from .vision_service import analyze_medical_image
+        from .image_utils import ImageValidationError
+        
+        # Process image if provided
+        image_interpretation = None
+        if image:
+            try:
+                logger.info(f"Processing uploaded image: {image.filename}")
+                image_bytes = await image.read()
+                image_interpretation = await analyze_medical_image(
+                    image_bytes=image_bytes,
+                    user_context=message[:200],
+                    filename=image.filename
+                )
+                logger.info("Image analysis completed successfully")
+            except ImageValidationError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Image validation failed: {str(e)}"
+                )
+            except Exception as e:
+                logger.error(f"Error processing image: {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to process image: {str(e)}"
+                )
+        
+        # Parse JSON strings from form data
+        parsed_consultation_data = json.loads(consultation_data) if consultation_data else None
+        parsed_vitals_data = json.loads(vitals_data) if vitals_data else None
+        parsed_habits_data = json.loads(habits_data) if habits_data else None
+        parsed_conditions_data = json.loads(conditions_data) if conditions_data else None
+        parsed_ai_consultation_data = json.loads(ai_consultation_data) if ai_consultation_data else None
+        parsed_patient_id = UUID(patient_id) if patient_id else None
+        
+        # Build ChatRequest object
+        request = ChatRequest(
+            message=message,
+            patient_id=parsed_patient_id,
+            session_id=session_id,
+            consultation_data=parsed_consultation_data,
+            vitals_data=parsed_vitals_data,
+            habits_data=parsed_habits_data,
+            conditions_data=parsed_conditions_data,
+            ai_consultation_data=parsed_ai_consultation_data
+        )
+        
+        # Process with tools and image interpretation
+        response = await process_chat_request_with_tools(
+            db=db, 
+            request=request,
+            image_interpretation=image_interpretation
+        )
         return response
+        
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -347,7 +477,14 @@ async def chat_with_tools(
 
 @router.post("/chat/stream")
 async def chat_stream(
-    request: ChatRequest,
+    message: str = Form(...),
+    patient_id: Optional[str] = Form(None),
+    consultation_data: Optional[str] = Form(None),
+    vitals_data: Optional[str] = Form(None),
+    habits_data: Optional[str] = Form(None),
+    conditions_data: Optional[str] = Form(None),
+    ai_consultation_data: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
     session_id: Optional[UUID] = None,
     db: Session = Depends(get_db)
 ):
@@ -355,6 +492,10 @@ async def chat_stream(
     Streaming chat endpoint that shows AI's thinking process in real-time.
     
     Returns Server-Sent Events (SSE) with different event types:
+    - **image_validation**: Image validation progress (if image provided)
+    - **image_processing**: Image encoding/preparation (if image provided)
+    - **vision_analysis**: GPT-5 analyzing image (if image provided)
+    - **vision_complete**: Image analysis results (if image provided)
     - **thinking**: AI's reasoning process
     - **tool_call**: When AI decides to use a tool
     - **tool_result**: Results from tool execution
@@ -365,18 +506,51 @@ async def chat_stream(
     **Query Parameters:**
     - **session-id** (optional): Session UUID for ongoing conversations
     
-    **Request Body:** Same as /chat endpoint
+    **Request Body (multipart/form-data):**
+    - **message**: User's message/prompt (REQUIRED)
+    - **image**: Optional medical image (JPEG, PNG, WEBP, max 20MB)
+    - All other fields same as /chat endpoint
     
     **Usage Example (JavaScript):**
     ```javascript
-    const eventSource = new EventSource('/api/v1/multi-disease-detector/chat/stream');
-    eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log(data.type, data.data);
-    };
+    const formData = new FormData();
+    formData.append('message', 'What is this rash?');
+    formData.append('image', imageFile);
+    
+    const response = await fetch('/api/v1/multi-disease-detector/chat/stream', {
+        method: 'POST',
+        body: formData
+    });
+    
+    const reader = response.body.getReader();
+    // Process SSE stream...
     ```
     """
     try:
+        # Import vision service
+        from .vision_service import analyze_medical_image_streaming
+        from .image_utils import ImageValidationError
+        
+        # Parse JSON strings from form data
+        parsed_consultation_data = json.loads(consultation_data) if consultation_data else None
+        parsed_vitals_data = json.loads(vitals_data) if vitals_data else None
+        parsed_habits_data = json.loads(habits_data) if habits_data else None
+        parsed_conditions_data = json.loads(conditions_data) if conditions_data else None
+        parsed_ai_consultation_data = json.loads(ai_consultation_data) if ai_consultation_data else None
+        parsed_patient_id = UUID(patient_id) if patient_id else None
+        
+        # Build ChatRequest object
+        request = ChatRequest(
+            message=message,
+            patient_id=parsed_patient_id,
+            session_id=session_id,
+            consultation_data=parsed_consultation_data,
+            vitals_data=parsed_vitals_data,
+            habits_data=parsed_habits_data,
+            conditions_data=parsed_conditions_data,
+            ai_consultation_data=parsed_ai_consultation_data
+        )
+        
         # Get or create session
         session = await get_or_create_session(
             db=db,
@@ -385,22 +559,61 @@ async def chat_stream(
             first_message=request.message
         )
         
-        # Build patient context
-        patient_context = build_context_from_data(request)
-        
-        # Get conversation history
-        conversation_history = await get_session_history(db, session.id)
-        
-        # Build chat messages
-        messages = build_chat_messages(
-            user_message=request.message,
-            patient_context=patient_context,
-            conversation_history=conversation_history
-        )
+        # Read image bytes BEFORE creating generator (while file handle is open)
+        image_bytes = None
+        image_filename = None
+        if image:
+            try:
+                logger.info(f"Reading uploaded image: {image.filename} (content_type: {image.content_type})")
+                image_bytes = await image.read()
+                image_filename = image.filename
+                logger.info(f"Successfully read image: {len(image_bytes)} bytes")
+            except Exception as e:
+                logger.error(f"Error reading image file '{image.filename}': {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to read image file: {str(e)}"
+                )
         
         # Stream generator
         async def event_generator():
             try:
+                image_interpretation = None
+                
+                # Step 1: Process image if provided (with streaming events)
+                if image_bytes:
+                    logger.info(f"Processing image in stream: {image_filename}")
+                    async for vision_event in analyze_medical_image_streaming(
+                        image_bytes=image_bytes,
+                        user_context=message[:200],
+                        filename=image_filename
+                    ):
+                        # Relay vision events
+                        sse_data = json.dumps(vision_event)
+                        yield f"data: {sse_data}\n\n"
+                        
+                        # Capture final interpretation
+                        if vision_event.get("type") == "vision_complete":
+                            image_interpretation = vision_event.get("data")
+                        
+                        # Stop if error
+                        if vision_event.get("type") == "error":
+                            return
+                
+                # Step 2: Build patient context (including image interpretation)
+                patient_context = build_context_from_data(request, image_interpretation)
+                
+                # Step 3: Get conversation history
+                conversation_history = await get_session_history(db, session.id)
+                
+                # Step 4: Build chat messages
+                messages = build_chat_messages(
+                    user_message=request.message,
+                    patient_context=patient_context,
+                    conversation_history=conversation_history
+                )
+                
+                # Step 5: Stream AI response with tools
                 async for event in generate_response_with_tools(messages, enable_streaming=True):
                     # Format as SSE
                     event_type = event.get("type", "message")
@@ -442,6 +655,8 @@ async def chat_stream(
             }
         )
         
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
