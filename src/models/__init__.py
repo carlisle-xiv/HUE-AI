@@ -126,6 +126,11 @@ from .multi_disease_detector import (
     ChatMessage,
 )
 
+# Import drug authenticity models - MIGRATION 12
+from .drug_authenticity import (
+    DrugAuthenticityCheck,
+)
+
 # Export all models - MIGRATION 1-3
 __all__ = [
     # Base
@@ -227,5 +232,8 @@ __all__ = [
     # Multi Disease Detector - MIGRATION 11
     "ChatSession",
     "ChatMessage",
+    
+    # Drug Authenticity - MIGRATION 12
+    "DrugAuthenticityCheck",
 ]
 
