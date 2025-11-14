@@ -1,7 +1,3 @@
-"""
-FastAPI router for drug authenticity verification API endpoints.
-"""
-
 import logging
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse

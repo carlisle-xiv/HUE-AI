@@ -1,8 +1,3 @@
-"""
-Image processing utilities for Multi Disease Detector.
-Handles validation, encoding, resizing, and metadata extraction for medical images.
-"""
-
 import base64
 import io
 import logging

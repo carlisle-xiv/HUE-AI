@@ -1,8 +1,3 @@
-"""
-Artifact generation and PDF conversion for Multi Disease Detector.
-Creates structured medical documents that can be displayed and downloaded.
-"""
-
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional

@@ -1,8 +1,3 @@
-"""
-Tool service layer for Multi Disease Detector.
-Handles execution of tools like Tavily web search and document generation.
-"""
-
 import json
 import logging
 import os

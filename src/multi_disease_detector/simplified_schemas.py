@@ -1,8 +1,3 @@
-"""
-Simplified, client-friendly schemas for Multi Disease Detector chat endpoint.
-These provide a simple API surface while leveraging OpenAI infrastructure internally.
-"""
-
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID

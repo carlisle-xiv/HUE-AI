@@ -1,8 +1,3 @@
-"""
-Pydantic schemas for Multi Disease Detector API.
-Flattened schema structure to avoid circular reference issues.
-"""
-
 from datetime import datetime, date
 from typing import Optional, List, Any, Dict
 from uuid import UUID

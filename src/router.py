@@ -1,7 +1,3 @@
-"""
-General router module that combines all feature routers.
-"""
-
 from fastapi import APIRouter
 from src.multi_disease_detector import router as multi_disease_detector_router
 from src.drug_recommendation import router as drug_recommendation_router

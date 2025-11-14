@@ -1,8 +1,3 @@
-"""
-Service layer for OpenAI-compliant chat completions endpoint.
-Handles message conversion, image processing, tool calling, and streaming.
-"""
-
 import base64
 import json
 import logging

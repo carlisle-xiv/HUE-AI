@@ -1,9 +1,3 @@
-"""
-Vision service for Multi Disease Detector.
-Integrates with GPT-5 via OpenRouter for medical image analysis.
-GPT-5 acts as the "eyes" - interpreting images and providing structured findings.
-"""
-
 import json
 import logging
 import os

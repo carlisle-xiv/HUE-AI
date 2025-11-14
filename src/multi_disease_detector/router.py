@@ -1,7 +1,3 @@
-"""
-FastAPI router for Multi Disease Detector endpoints.
-"""
-
 import json
 import logging
 from typing import List, Optional

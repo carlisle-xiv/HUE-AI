@@ -1,8 +1,3 @@
-"""
-General schemas module for common API schemas.
-Feature-specific schemas are in their respective modules.
-"""
-
 from pydantic import BaseModel
 from typing import Optional
 

@@ -1,8 +1,3 @@
-"""
-Service layer for simplified chat endpoint.
-Converts between simplified client format and internal OpenAI format.
-"""
-
 import base64
 import json
 import logging

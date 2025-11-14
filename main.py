@@ -1,8 +1,3 @@
-"""
-Main entry point for the HUE-AI application.
-Run with: uvicorn main:app --reload
-"""
-
 import uvicorn
 from src.app import app
 

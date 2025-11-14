@@ -1,8 +1,3 @@
-"""
-OpenAI API-compliant schemas for Multi Disease Detector.
-These schemas follow OpenAI's Chat Completions API format with custom extensions for patient context.
-"""
-
 from datetime import datetime
 from typing import Optional, List, Any, Dict, Union, Literal
 from uuid import UUID

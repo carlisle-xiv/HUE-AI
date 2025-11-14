@@ -1,8 +1,3 @@
-"""
-Service layer for Multi Disease Detector.
-Handles LLM integration via OpenRouter API, context building, and session management.
-"""
-
 import json
 import logging
 import os
