@@ -1,7 +1,3 @@
-"""
-Main FastAPI application setup.
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference

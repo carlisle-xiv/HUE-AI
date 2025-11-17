@@ -1,8 +1,3 @@
-"""
-Database setup helper script.
-Run this to create all database tables.
-"""
-
 from sqlmodel import SQLModel
 from src.database import engine
 from src.models import *

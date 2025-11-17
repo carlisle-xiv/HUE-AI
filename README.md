@@ -528,15 +528,6 @@ pip install --force-reinstall weasyprint
 - **Server-Sent Events (SSE)** - Real-time streaming
 - **CORS middleware** - Cross-origin support
 
-## 📖 Additional Resources
-
-### Documentation Files
-- [QUICK_START.md](QUICK_START.md) - Fast setup guide
-- [SETUP_NEW_FEATURES.md](SETUP_NEW_FEATURES.md) - Tool calling setup
-- [TOOL_CALLING_AND_STREAMING_GUIDE.md](TOOL_CALLING_AND_STREAMING_GUIDE.md) - Comprehensive usage guide
-- [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - Implementation details
-- [MULTI_DISEASE_DETECTOR_IMPLEMENTATION.md](MULTI_DISEASE_DETECTOR_IMPLEMENTATION.md) - Feature overview
-
 ### API References
 - **OpenRouter**: https://openrouter.ai/docs
 - **Tavily**: https://tavily.com/docs
@@ -627,10 +618,9 @@ Contributions are welcome! Here's how you can help:
 1. **Fork the repository**
 2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
 3. **Make your changes**
-4. **Run tests**: `python test_tools_and_streaming.py`
-5. **Commit changes**: `git commit -m 'Add amazing feature'`
-6. **Push to branch**: `git push origin feature/amazing-feature`
-7. **Open a Pull Request**
+4. **Commit changes**: `git commit -m 'Add amazing feature'`
+5. **Push to branch**: `git push origin feature/amazing-feature`
+6. **Open a Pull Request**
 
 ### Development Guidelines
 - Follow PEP 8 style guide
@@ -652,25 +642,6 @@ Contributions are welcome! Here's how you can help:
 - With document generation: 5-8 seconds
 - Streaming starts: Immediate
 
-### Scaling Considerations
-- Stateless API (easy horizontal scaling)
-- Database connection pooling
-- Consider Redis for caching common searches
-- Monitor API rate limits
-
-## 🔒 Security Considerations
-
-- ✅ API keys stored in environment variables
-- ✅ Input validation on all endpoints
-- ✅ SQL injection protection (SQLAlchemy ORM)
-- ✅ Medical disclaimers on all responses
-- ✅ Session-based access control
-- ⚠️ Add rate limiting for production
-- ⚠️ Implement authentication/authorization
-- ⚠️ Set up HTTPS/TLS in production
-- ⚠️ Regular security audits recommended
-
-## 📝 License
 
 [Your License Here]
 

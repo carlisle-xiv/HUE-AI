@@ -1,8 +1,3 @@
-"""
-Tool definitions for Multi Disease Detector function calling.
-Defines schemas and metadata for tools available to the AI assistant.
-"""
-
 from typing import List, Dict, Any
 
 # Tool definitions in OpenRouter/OpenAI format
