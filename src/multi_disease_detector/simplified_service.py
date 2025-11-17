@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Internal configuration (hidden from clients)
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 DEFAULT_TEMPERATURE = 0.7
-DEFAULT_MAX_TOKENS = 1024
+DEFAULT_MAX_TOKENS = 8192
 DEFAULT_TOP_P = 0.9
 SYSTEM_MESSAGE = (
     "You are an AI health consultant assisting patients with health-related questions. "

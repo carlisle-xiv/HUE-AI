@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = "openai/gpt-oss-120b"  # Model available via OpenRouter
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MAX_HISTORY_MESSAGES = 10  # Limit context window
-MAX_RESPONSE_TOKENS = 1024
+MAX_RESPONSE_TOKENS = 8192
 DISCLAIMER_TEXT = (
     "⚠️ **Important Disclaimer**: This is an AI health assistant and should not replace "
     "professional medical advice, diagnosis, or treatment. Always consult with a qualified "
