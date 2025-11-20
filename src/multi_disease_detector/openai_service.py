@@ -415,10 +415,11 @@ async def process_openai_chat_request(
                     final_message = data.get("message", final_message)
                     tools_used = data.get("tools_used", [])
             
-            # Calculate risk assessment
+            # Calculate risk assessment (with user message for smart assessment)
             risk_level, should_see_doctor = calculate_risk_assessment(
                 message=final_message,
-                patient_context=patient_context_str
+                patient_context=patient_context_str,
+                user_message=last_user_message  # Pass original user query for intent detection
             )
             
             # Save to database if we have a session
@@ -462,10 +463,11 @@ async def process_openai_chat_request(
             
             ai_message = await generate_response(internal_messages)
             
-            # Calculate risk assessment
+            # Calculate risk assessment (with user message for smart assessment)
             risk_level, should_see_doctor = calculate_risk_assessment(
                 message=ai_message,
-                patient_context=patient_context_str
+                patient_context=patient_context_str,
+                user_message=last_user_message  # Pass original user query for intent detection
             )
             
             # Save to database if we have a session
@@ -700,7 +702,8 @@ async def process_openai_chat_request_streaming(
                 
                 risk_level, should_see_doctor = calculate_risk_assessment(
                     message=accumulated_content,
-                    patient_context=patient_context_str
+                    patient_context=patient_context_str,
+                    user_message=last_user_message  # Pass original user query for intent detection
                 )
                 
                 # Save to database

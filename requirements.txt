@@ -16,6 +16,14 @@ python-dotenv==1.0.1
 openai>=1.0.0
 pillow==11.0.0
 
+# ML for Risk Assessment
+sentence-transformers==2.7.0
+transformers==4.38.0
+huggingface_hub==0.26.2
+tokenizers==0.15.2
+torch==2.0.1
+numpy==1.26.4
+
 # Tool Integration
 tavily-python==0.3.0
 httpx==0.27.0
