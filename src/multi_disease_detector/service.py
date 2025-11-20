@@ -13,6 +13,7 @@ from .models import ChatSession, ChatMessage
 from .schemas import ChatRequest, ChatResponse, ChatResponseWithArtifacts
 from .tools import get_tool_definitions
 from .tool_service import execute_tool
+from .risk_assessment import calculate_risk_assessment
 
 # Load environment variables
 load_dotenv()
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = "openai/gpt-oss-120b"  # Model available via OpenRouter
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MAX_HISTORY_MESSAGES = 10  # Limit context window
-MAX_RESPONSE_TOKENS = 8192
+MAX_RESPONSE_TOKENS = 32768
 DISCLAIMER_TEXT = (
     "⚠️ **Important Disclaimer**: This is an AI health assistant and should not replace "
     "professional medical advice, diagnosis, or treatment. Always consult with a qualified "
@@ -343,7 +344,32 @@ async def generate_response(messages: List[dict]) -> str:
         )
         
         # Extract the assistant's response
-        assistant_message = completion.choices[0].message.content
+        choice = completion.choices[0]
+        assistant_message = choice.message.content
+        
+        # Log token usage and finish reason
+        if hasattr(completion, 'usage') and completion.usage:
+            logger.info(
+                f"Token usage - Prompt: {completion.usage.prompt_tokens}, "
+                f"Completion: {completion.usage.completion_tokens}, "
+                f"Total: {completion.usage.total_tokens}"
+            )
+        
+        finish_reason = choice.finish_reason
+        logger.info(f"Completion finish_reason: {finish_reason}")
+        
+        # Handle truncation
+        if finish_reason == "length":
+            logger.warning(
+                f"Response truncated due to max_tokens limit ({MAX_RESPONSE_TOKENS}). "
+                "Consider increasing MAX_RESPONSE_TOKENS or implementing continuation."
+            )
+            # Note: Could implement automatic continuation here in future
+        
+        # Handle missing content
+        if not assistant_message:
+            logger.error("API returned empty content")
+            return "I apologize, but I couldn't generate a response. Please try rephrasing your question."
         
         return assistant_message.strip()
         
@@ -352,51 +378,8 @@ async def generate_response(messages: List[dict]) -> str:
         return "I apologize, but I encountered an error while processing your request. Please try again later."
 
 
-def calculate_risk_assessment(message: str, patient_context: str) -> Tuple[str, bool]:
-    """
-    Calculate risk assessment based on the conversation and context.
-    
-    Args:
-        message: AI response message
-        patient_context: Patient context data
-        
-    Returns:
-        Tuple of (risk_level, should_see_doctor)
-    """
-    # Simple keyword-based risk assessment
-    # In production, this could use a more sophisticated ML model
-    
-    emergency_keywords = [
-        "chest pain", "severe pain", "difficulty breathing", "unconscious",
-        "bleeding heavily", "stroke", "heart attack", "emergency", "911"
-    ]
-    
-    high_risk_keywords = [
-        "blood pressure", "diabetes", "chronic", "severe", "urgent",
-        "worsening", "persistent", "infection", "high fever"
-    ]
-    
-    medium_risk_keywords = [
-        "pain", "discomfort", "symptoms", "condition", "medication",
-        "treatment", "concern", "monitor"
-    ]
-    
-    combined_text = (message + " " + patient_context).lower()
-    
-    # Check for emergency
-    if any(keyword in combined_text for keyword in emergency_keywords):
-        return "EMERGENCY", True
-    
-    # Check for high risk
-    if any(keyword in combined_text for keyword in high_risk_keywords):
-        return "HIGH", True
-    
-    # Check for medium risk
-    if any(keyword in combined_text for keyword in medium_risk_keywords):
-        return "MEDIUM", True
-    
-    # Default to low risk
-    return "LOW", False
+# calculate_risk_assessment is now imported from risk_assessment.py
+# Old implementation removed in favor of smart ML-based assessment
 
 
 async def save_chat_exchange(
@@ -484,10 +467,11 @@ async def process_chat_request(
         # Step 5: Generate AI response via HuggingFace API
         ai_message = await generate_response(messages)
         
-        # Step 6: Calculate risk assessment
+        # Step 6: Calculate risk assessment (with user message for smart assessment)
         risk_level, should_see_doctor = calculate_risk_assessment(
             message=ai_message,
-            patient_context=patient_context
+            patient_context=patient_context,
+            user_message=request.message  # Pass original user query for intent detection
         )
         
         # Step 7: Save chat exchange
@@ -706,6 +690,22 @@ async def generate_response_with_tools(
                 choice = completion.choices[0]
                 message = choice.message
                 
+                # Log token usage and finish reason
+                if hasattr(completion, 'usage') and completion.usage:
+                    logger.info(
+                        f"Tool iteration {iteration} - Tokens: {completion.usage.total_tokens} "
+                        f"(prompt: {completion.usage.prompt_tokens}, completion: {completion.usage.completion_tokens})"
+                    )
+                
+                logger.info(f"Tool iteration {iteration} finish_reason: {choice.finish_reason}")
+                
+                # Handle truncation warning
+                if choice.finish_reason == "length":
+                    logger.warning(
+                        f"Response truncated at iteration {iteration}. "
+                        f"Consider increasing MAX_RESPONSE_TOKENS ({MAX_RESPONSE_TOKENS}) or reducing context."
+                    )
+                
                 if choice.finish_reason == "tool_calls" and message.tool_calls:
                     # AI wants to call tools
                     accumulated_content += (message.content or "")
@@ -788,6 +788,11 @@ async def generate_response_with_tools(
                     return
         
         # Max iterations reached
+        logger.warning(
+            f"Max tool iterations ({max_tool_iterations}) reached. "
+            f"Response may be incomplete. Tools used: {tools_used}"
+        )
+        
         yield {
             "type": "thinking",
             "data": "Synthesizing all the information gathered...",
@@ -881,10 +886,11 @@ async def process_chat_request_with_tools(
                 except:
                     pass
         
-        # Step 6: Calculate risk assessment
+        # Step 6: Calculate risk assessment (with user message for smart assessment)
         risk_level, should_see_doctor = calculate_risk_assessment(
             message=final_message,
-            patient_context=patient_context
+            patient_context=patient_context,
+            user_message=request.message  # Pass original user query for intent detection
         )
         
         # Step 7: Save chat exchange with metadata
