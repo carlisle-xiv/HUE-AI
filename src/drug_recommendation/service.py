@@ -216,7 +216,21 @@ def extract_manufacturer_info(results: List[Dict], drug_name: str) -> Optional[s
         for pattern in manufacturer_patterns:
             match = re.search(pattern, content, re.IGNORECASE)
             if match:
-                return match.group(1).strip()
+                # Extract the surrounding sentence for better context
+                start_pos = max(0, match.start() - 100)
+                end_pos = min(len(content), match.end() + 200)
+                context = content[start_pos:end_pos].strip()
+                
+                # Try to find complete sentence boundaries
+                sentences = context.split('.')
+                if len(sentences) > 1:
+                    # Find the sentence containing the match
+                    for sentence in sentences:
+                        if match.group(0).lower() in sentence.lower():
+                            return sentence.strip()
+                
+                # Fallback to the context if sentence extraction fails
+                return context[:500]  # Limit to 500 chars with context
     
     return None
 
@@ -277,11 +291,16 @@ def extract_additional_info(results: List[Dict], drug_name: str) -> Optional[str
         first_result = results[0]
         content = first_result.get("content", "")
         
-        # Return first 200 characters as a summary
+        # Return first 1000 characters as a summary (increased from 300)
         if content:
-            summary = content[:300].strip()
-            if len(content) > 300:
-                summary += "..."
+            summary = content[:1000].strip()
+            if len(content) > 1000:
+                # Try to end at a sentence boundary
+                last_period = summary.rfind('.')
+                if last_period > 800:  # Only if we're reasonably close to the end
+                    summary = summary[:last_period + 1]
+                else:
+                    summary += "..."
             return summary
     
     return None
