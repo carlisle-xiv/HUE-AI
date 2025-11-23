@@ -394,6 +394,46 @@ async def process_openai_chat_request(
         if patient_context_data:
             patient_context_str = build_context_from_data(patient_context_data, image_interpretation)
         
+        # Step 6.5: Inject patient context (including image analysis) into internal_messages
+        if patient_context_str:
+            logger.info("Injecting patient context (including image analysis) into messages")
+            system_message_found = False
+            for msg in internal_messages:
+                if msg.get("role") == "system":
+                    # Check if image analysis is present
+                    if "Image Analysis" in patient_context_str:
+                        image_instruction = (
+                            "\n\n**CRITICAL INSTRUCTION - Image Analysis Present:**\n"
+                            "The Patient Context below includes detailed image analysis. Your response must "
+                            "explain the SPECIFIC findings observed in the patient's images, not generic information."
+                        )
+                        msg["content"] = msg["content"] + image_instruction + f"\n\n{patient_context_str}"
+                    else:
+                        msg["content"] = msg["content"] + f"\n\n{patient_context_str}"
+                    system_message_found = True
+                    logger.debug(f"Patient context injected into existing system message ({len(patient_context_str)} chars)")
+                    break
+            
+            if not system_message_found:
+                # No system message exists, create one
+                base_instruction = "You are an AI health consultant assisting patients with health-related questions."
+                
+                # Add image-specific instruction if image analysis is present
+                if "Image Analysis" in patient_context_str:
+                    base_instruction += (
+                        "\n\n**CRITICAL INSTRUCTION - Image Analysis Present:**\n"
+                        "The Patient Context below includes detailed image analysis from our vision AI. "
+                        "Your response MUST explain the SPECIFIC findings observed in the patient's images, "
+                        "not generic educational information. Focus on THEIR scan results, measurements, and "
+                        "what those particular findings mean for them."
+                    )
+                
+                internal_messages.insert(0, {
+                    "role": "system",
+                    "content": f"{base_instruction}\n\n{patient_context_str}"
+                })
+                logger.debug(f"Created new system message with patient context ({len(patient_context_str)} chars)")
+        
         # Step 7: Process with tools if enabled
         tools_enabled = request.tools is not None and len(request.tools) > 0
         
@@ -626,6 +666,50 @@ async def process_openai_chat_request_streaming(
                 patient_id=patient_id,
                 first_message=last_user_message or "New conversation"
             )
+        
+        # Step 5.5: Build and inject patient context (including image analysis) into internal_messages
+        patient_context_str = ""
+        if patient_context_data:
+            patient_context_str = build_context_from_data(patient_context_data, image_interpretation)
+        
+        if patient_context_str:
+            logger.info("Injecting patient context (including image analysis) into messages for streaming")
+            system_message_found = False
+            for msg in internal_messages:
+                if msg.get("role") == "system":
+                    # Check if image analysis is present
+                    if "Image Analysis" in patient_context_str:
+                        image_instruction = (
+                            "\n\n**CRITICAL INSTRUCTION - Image Analysis Present:**\n"
+                            "The Patient Context below includes detailed image analysis. Your response must "
+                            "explain the SPECIFIC findings observed in the patient's images, not generic information."
+                        )
+                        msg["content"] = msg["content"] + image_instruction + f"\n\n{patient_context_str}"
+                    else:
+                        msg["content"] = msg["content"] + f"\n\n{patient_context_str}"
+                    system_message_found = True
+                    logger.debug(f"Patient context injected into existing system message ({len(patient_context_str)} chars)")
+                    break
+            
+            if not system_message_found:
+                # No system message exists, create one
+                base_instruction = "You are an AI health consultant assisting patients with health-related questions."
+                
+                # Add image-specific instruction if image analysis is present
+                if "Image Analysis" in patient_context_str:
+                    base_instruction += (
+                        "\n\n**CRITICAL INSTRUCTION - Image Analysis Present:**\n"
+                        "The Patient Context below includes detailed image analysis from our vision AI. "
+                        "Your response MUST explain the SPECIFIC findings observed in the patient's images, "
+                        "not generic educational information. Focus on THEIR scan results, measurements, and "
+                        "what those particular findings mean for them."
+                    )
+                
+                internal_messages.insert(0, {
+                    "role": "system",
+                    "content": f"{base_instruction}\n\n{patient_context_str}"
+                })
+                logger.debug(f"Created new system message with patient context ({len(patient_context_str)} chars)")
         
         # Step 6: Send initial chunk with role
         initial_chunk = build_openai_stream_chunk(

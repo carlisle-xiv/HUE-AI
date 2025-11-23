@@ -217,8 +217,8 @@ async def analyze_medical_image(
         # Build prompt
         prompt = get_vision_prompt(user_context)
         
-        # Call GPT-5 vision
-        logger.info(f"Calling GPT-5 vision model: {GPT5_MODEL}")
+        # Call GPT-4 vision
+        logger.info(f"Calling GPT-4o vision model: {GPT5_MODEL}")
         completion = client.chat.completions.create(
             model=GPT5_MODEL,
             messages=[
@@ -362,7 +362,7 @@ async def analyze_medical_image_streaming(
         prompt = get_vision_prompt(user_context)
         
         # Call GPT-5 vision (streaming)
-        logger.info(f"Calling GPT-5 vision model (streaming): {GPT5_MODEL}")
+        logger.info(f"Calling GPT-4o vision model (streaming): {GPT5_MODEL}")
         
         stream = client.chat.completions.create(
             model=GPT5_MODEL,
