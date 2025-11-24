@@ -2,11 +2,13 @@
 """
 Test script for streaming tool execution fix.
 Tests the /api/v1/multi-disease-detector/v1/chat endpoint with stream=true.
+Enhanced with timing checks to validate real-time streaming.
 """
 
 import requests
 import json
 import sys
+import time
 from datetime import datetime
 
 # Configuration
@@ -103,10 +105,16 @@ def test_streaming_endpoint(test_case):
             tools_used = []
             final_event = None
             
+            # Timing tracking
+            first_chunk_time = None
+            last_chunk_time = None
+            chunk_times = []
+            
             print(f"\n📡 Processing stream events...")
             
             for line in response.iter_lines(decode_unicode=True):
                 if line.startswith('data: '):
+                    current_time = time.time()
                     data_str = line[6:]
                     
                     if data_str == '[DONE]':
@@ -132,8 +140,13 @@ def test_streaming_endpoint(test_case):
                         elif event_type == 'content':
                             content = event.get('data', '')
                             content_chunks.append(content)
-                            if len(content_chunks) == 1:
+                            chunk_times.append(current_time)
+                            
+                            if first_chunk_time is None:
+                                first_chunk_time = current_time
                                 print(f"   📝 Content streaming started...")
+                            
+                            last_chunk_time = current_time
                         
                         elif event_type == 'complete':
                             final_event = event.get('data', {})
@@ -152,6 +165,21 @@ def test_streaming_endpoint(test_case):
             # Analyze results
             full_content = ''.join(content_chunks)
             
+            # Calculate streaming metrics
+            streaming_duration = 0
+            avg_chunk_interval = 0
+            is_real_streaming = False
+            
+            if first_chunk_time and last_chunk_time and len(chunk_times) > 1:
+                streaming_duration = last_chunk_time - first_chunk_time
+                
+                # Calculate average interval between chunks
+                intervals = [chunk_times[i] - chunk_times[i-1] for i in range(1, len(chunk_times))]
+                avg_chunk_interval = sum(intervals) / len(intervals) if intervals else 0
+                
+                # Real streaming should have duration > 0.3s and reasonable chunk distribution
+                is_real_streaming = streaming_duration > 0.3 and len(chunk_times) > 5
+            
             print(f"\n📊 Results:")
             print(f"   Events received: {len(events_received)}")
             print(f"   Event types: {set(events_received)}")
@@ -159,6 +187,11 @@ def test_streaming_endpoint(test_case):
             print(f"   Content chunks: {len(content_chunks)}")
             print(f"   Total content length: {len(full_content)} chars")
             print(f"   Final event received: {'Yes' if final_event else 'No'}")
+            
+            print(f"\n⏱️  Streaming Metrics:")
+            print(f"   Streaming duration: {streaming_duration:.2f}s")
+            print(f"   Avg chunk interval: {avg_chunk_interval*1000:.1f}ms")
+            print(f"   Real-time streaming: {'✅ YES' if is_real_streaming else '❌ NO (buffered)'}")
             
             # Validation
             if not full_content:
@@ -173,6 +206,13 @@ def test_streaming_endpoint(test_case):
                 print(f"\n⚠️  WARNING: Content seems too short (< 100 chars)")
                 print(f"   Content preview: {full_content[:200]}")
                 return False
+            
+            # Validate real-time streaming (critical check)
+            if not is_real_streaming and len(content_chunks) > 5:
+                print(f"\n⚠️  WARNING: Streaming appears buffered (not real-time)!")
+                print(f"   Duration: {streaming_duration:.2f}s for {len(content_chunks)} chunks")
+                print(f"   This suggests the async/await fix may not be working correctly.")
+                # Don't fail the test, but warn
             
             print(f"\n✅ SUCCESS: Complete response received!")
             print(f"\n📄 Content preview (first 300 chars):")

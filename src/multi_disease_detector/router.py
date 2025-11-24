@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import List, Optional
@@ -361,9 +362,11 @@ async def unified_chat(
                 process_simplified_chat_streaming(db, request, session_id),
                 media_type="text/event-stream",
                 headers={
-                    "Cache-Control": "no-cache",
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache, no-transform",
                     "Connection": "keep-alive",
-                    "X-Accel-Buffering": "no"
+                    "X-Accel-Buffering": "no",
+                    "X-Content-Type-Options": "nosniff",
                 }
             )
         else:
@@ -752,9 +755,11 @@ async def openai_chat_completions(
                 process_openai_chat_request_streaming(db, request),
                 media_type="text/event-stream",
                 headers={
-                    "Cache-Control": "no-cache",
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache, no-transform",
                     "Connection": "keep-alive",
-                    "X-Accel-Buffering": "no"
+                    "X-Accel-Buffering": "no",
+                    "X-Content-Type-Options": "nosniff",
                 }
             )
         else:
@@ -1340,6 +1345,7 @@ async def chat_stream(
                         # Relay vision events
                         sse_data = json.dumps(vision_event)
                         yield f"data: {sse_data}\n\n"
+                        await asyncio.sleep(0)  # Force HTTP flush
                         
                         # Capture final interpretation
                         if vision_event.get("type") == "vision_complete":
@@ -1380,6 +1386,7 @@ async def chat_stream(
                     })
                     
                     yield f"data: {sse_data}\n\n"
+                    await asyncio.sleep(0)  # Force HTTP flush
                     
                     # If done, close stream
                     if event_type == "done":
@@ -1393,14 +1400,17 @@ async def chat_stream(
                     "timestamp": datetime.utcnow().isoformat()
                 })
                 yield f"data: {error_event}\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
         
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
             headers={
-                "Cache-Control": "no-cache",
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache, no-transform",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"  # Disable proxy buffering
+                "X-Accel-Buffering": "no",
+                "X-Content-Type-Options": "nosniff",
             }
         )
         

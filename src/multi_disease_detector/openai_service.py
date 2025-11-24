@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import logging
@@ -455,8 +456,9 @@ async def process_openai_chat_request(
                     final_message = data.get("message", final_message)
                     tools_used = data.get("tools_used", [])
             
-            # Calculate risk assessment (with user message for smart assessment)
-            risk_level, should_see_doctor = calculate_risk_assessment(
+            # Calculate risk assessment asynchronously (doesn't block streaming)
+            risk_level, should_see_doctor = await asyncio.to_thread(
+                calculate_risk_assessment,
                 message=final_message,
                 patient_context=patient_context_str,
                 user_message=last_user_message  # Pass original user query for intent detection
@@ -606,6 +608,7 @@ async def process_openai_chat_request_streaming(
                     )
                     
                     yield f"data: {chunk.model_dump_json()}\n\n"
+                    await asyncio.sleep(0)  # Force HTTP flush
                     
                     # Capture interpretation
                     if event_type == "vision_complete":
@@ -625,6 +628,7 @@ async def process_openai_chat_request_streaming(
                     event_data={"error": str(e)}
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
         
         # Step 3: Update request with cleaned messages
         request_copy = request.model_copy()
@@ -718,6 +722,7 @@ async def process_openai_chat_request_streaming(
             role="assistant"
         )
         yield f"data: {initial_chunk.model_dump_json()}\n\n"
+        await asyncio.sleep(0)  # Force HTTP flush
         
         # Step 7: Stream AI response
         accumulated_content = ""
@@ -737,6 +742,7 @@ async def process_openai_chat_request_streaming(
                     event_data={"thinking": event_data}
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
                 thinking_steps.append(event_data)
             
             elif event_type == "tool_call":
@@ -748,6 +754,7 @@ async def process_openai_chat_request_streaming(
                     event_data=event_data
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
             
             elif event_type == "tool_result":
                 # Send tool result event
@@ -758,6 +765,7 @@ async def process_openai_chat_request_streaming(
                     event_data=event_data
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
                 
                 if isinstance(event_data, dict):
                     tool_name = event_data.get("tool_name")
@@ -773,18 +781,20 @@ async def process_openai_chat_request_streaming(
                     delta_content=event_data
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
             
             elif event_type == "done":
                 # Final chunk with finish_reason
                 if isinstance(event_data, dict):
                     tools_used = event_data.get("tools_used", tools_used)
                 
-                # Calculate risk assessment
+                # Calculate risk assessment asynchronously (doesn't block streaming)
                 patient_context_str = ""
                 if patient_context_data:
                     patient_context_str = build_context_from_data(patient_context_data, image_interpretation)
                 
-                risk_level, should_see_doctor = calculate_risk_assessment(
+                risk_level, should_see_doctor = await asyncio.to_thread(
+                    calculate_risk_assessment,
                     message=accumulated_content,
                     patient_context=patient_context_str,
                     user_message=last_user_message  # Pass original user query for intent detection
@@ -818,9 +828,11 @@ async def process_openai_chat_request_streaming(
                     }
                 )
                 yield f"data: {final_chunk.model_dump_json()}\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
                 
                 # Send [DONE] marker (OpenAI standard)
                 yield "data: [DONE]\n\n"
+                await asyncio.sleep(0)  # Force HTTP flush
                 break
         
     except Exception as e:
@@ -833,4 +845,5 @@ async def process_openai_chat_request_streaming(
             event_data={"error": str(e)}
         )
         yield f"data: {error_chunk.model_dump_json()}\n\n"
+        await asyncio.sleep(0)  # Force HTTP flush
 

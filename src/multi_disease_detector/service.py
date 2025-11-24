@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -6,7 +7,7 @@ from typing import Optional, Tuple, List, Dict, Any, AsyncGenerator
 from uuid import UUID, uuid4
 
 from sqlmodel import Session, select, func
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from .models import ChatSession, ChatMessage
@@ -37,12 +38,12 @@ DISCLAIMER_TEXT = (
 _openai_client = None
 
 
-def get_openai_client() -> OpenAI:
+def get_openai_client() -> AsyncOpenAI:
     """
-    Get or initialize the OpenAI client configured for OpenRouter.
+    Get or initialize the AsyncOpenAI client configured for OpenRouter.
     
     Returns:
-        OpenAI client instance
+        AsyncOpenAI client instance
     """
     global _openai_client
     
@@ -51,8 +52,8 @@ def get_openai_client() -> OpenAI:
             logger.error("OPENROUTER_API_KEY not found in environment variables")
             raise ValueError("OPENROUTER_API_KEY is required. Please set it in your .env file")
         
-        # Initialize OpenAI client with OpenRouter endpoint
-        _openai_client = OpenAI(
+        # Initialize AsyncOpenAI client with OpenRouter endpoint
+        _openai_client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY
         )
@@ -351,7 +352,7 @@ async def generate_response(messages: List[dict]) -> str:
         client = get_openai_client()
         
         # Call OpenRouter API with chat completion
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages,
             max_tokens=MAX_RESPONSE_TOKENS,
@@ -483,8 +484,9 @@ async def process_chat_request(
         # Step 5: Generate AI response via HuggingFace API
         ai_message = await generate_response(messages)
         
-        # Step 6: Calculate risk assessment (with user message for smart assessment)
-        risk_level, should_see_doctor = calculate_risk_assessment(
+        # Step 6: Calculate risk assessment asynchronously (doesn't block)
+        risk_level, should_see_doctor = await asyncio.to_thread(
+            calculate_risk_assessment,
             message=ai_message,
             patient_context=patient_context,
             user_message=request.message  # Pass original user query for intent detection
@@ -558,7 +560,7 @@ async def generate_response_with_tools(
                 logger.info(f"[Iteration {iteration}] Creating streaming completion request")
                 
                 try:
-                    stream = client.chat.completions.create(
+                    stream = await client.chat.completions.create(
                         model=MODEL_NAME,
                         messages=messages,
                         tools=tools,
@@ -577,7 +579,7 @@ async def generate_response_with_tools(
                     
                     logger.info(f"[Iteration {iteration}] Stream created, processing chunks...")
                     
-                    for chunk in stream:
+                    async for chunk in stream:
                         chunk_count += 1
                         delta = chunk.choices[0].delta if chunk.choices else None
                         
@@ -769,7 +771,7 @@ async def generate_response_with_tools(
             
             else:
                 # Non-streaming mode
-                completion = client.chat.completions.create(
+                completion = await client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=messages,
                     tools=tools,
@@ -977,8 +979,9 @@ async def process_chat_request_with_tools(
                 except:
                     pass
         
-        # Step 6: Calculate risk assessment (with user message for smart assessment)
-        risk_level, should_see_doctor = calculate_risk_assessment(
+        # Step 6: Calculate risk assessment asynchronously (doesn't block)
+        risk_level, should_see_doctor = await asyncio.to_thread(
+            calculate_risk_assessment,
             message=final_message,
             patient_context=patient_context,
             user_message=request.message  # Pass original user query for intent detection

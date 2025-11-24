@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import logging
@@ -273,9 +274,11 @@ async def process_simplified_chat_streaming(
                         timestamp=datetime.utcnow().isoformat()
                     )
                     yield f"data: {completion_event.model_dump_json()}\n\n"
+                    await asyncio.sleep(0)  # Force HTTP flush
                     
                     # Send [DONE] marker
                     yield "data: [DONE]\n\n"
+                    await asyncio.sleep(0)  # Force HTTP flush
                     break
                 
                 try:
@@ -297,6 +300,7 @@ async def process_simplified_chat_streaming(
                             timestamp=datetime.utcnow().isoformat()
                         )
                         yield f"data: {thinking_event.model_dump_json()}\n\n"
+                        await asyncio.sleep(0)  # Force HTTP flush
                     
                     elif event_type == "tool_call":
                         # Tool call event
@@ -309,6 +313,7 @@ async def process_simplified_chat_streaming(
                             timestamp=datetime.utcnow().isoformat()
                         )
                         yield f"data: {tool_event.model_dump_json()}\n\n"
+                        await asyncio.sleep(0)  # Force HTTP flush
                     
                     elif event_type == "tool_result":
                         # Tool result event
@@ -325,6 +330,7 @@ async def process_simplified_chat_streaming(
                             timestamp=datetime.utcnow().isoformat()
                         )
                         yield f"data: {tool_event.model_dump_json()}\n\n"
+                        await asyncio.sleep(0)  # Force HTTP flush
                     
                     elif event_type == "done":
                         # Final event with metadata
@@ -343,6 +349,7 @@ async def process_simplified_chat_streaming(
                             timestamp=datetime.utcnow().isoformat()
                         )
                         yield f"data: {vision_event.model_dump_json()}\n\n"
+                        await asyncio.sleep(0)  # Force HTTP flush
                     
                     else:
                         # Content delta
@@ -361,6 +368,7 @@ async def process_simplified_chat_streaming(
                                     timestamp=datetime.utcnow().isoformat()
                                 )
                                 yield f"data: {content_event.model_dump_json()}\n\n"
+                                await asyncio.sleep(0)  # Force HTTP flush
                 
                 except json.JSONDecodeError:
                     # Skip malformed chunks
@@ -377,4 +385,5 @@ async def process_simplified_chat_streaming(
             timestamp=datetime.utcnow().isoformat()
         )
         yield f"data: {error_event.model_dump_json()}\n\n"
+        await asyncio.sleep(0)  # Force HTTP flush
 
