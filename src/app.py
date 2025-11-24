@@ -42,19 +42,35 @@ async def startup_event():
     """
     Application startup event.
     Preloads models and resources for optimal first-request performance.
+    
+    Environment Variables (from .env):
+        PRELOAD_MODELS: "true" | "false" (REQUIRED) - Enable/disable model preloading
     """
     logger.info("Starting HUE-AI application...")
     logger.info("Multi Disease Detector using OpenRouter API (openai/gpt-oss-120b)")
     
-    # Preload MiniLM model for risk assessment (eliminates 7s delay on first request)
-    logger.info("Preloading MiniLM model for risk assessment...")
-    from src.multi_disease_detector.risk_assessment import get_sentence_transformer
-    model = get_sentence_transformer()
+    # Read from .env (no hardcoded default)
+    preload_setting = os.getenv("PRELOAD_MODELS")
     
-    if model is not None:
-        logger.info("✓ MiniLM model preloaded successfully")
+    if preload_setting is None:
+        logger.warning("⚠ PRELOAD_MODELS not set in .env - defaulting to false for safety")
+        should_preload = False
     else:
-        logger.warning("⚠ MiniLM model failed to load - will use rule-based fallback")
+        should_preload = preload_setting.lower() == "true"
+        logger.info(f"PRELOAD_MODELS={preload_setting} (from .env)")
+    
+    if should_preload:
+        logger.info("Preloading MiniLM model for risk assessment...")
+        from src.multi_disease_detector.risk_assessment import get_sentence_transformer
+        model = get_sentence_transformer()
+        
+        if model is not None:
+            logger.info("✓ MiniLM model preloaded successfully")
+        else:
+            logger.warning("⚠ MiniLM model failed to load - will use rule-based fallback")
+    else:
+        logger.info("Model preloading disabled (PRELOAD_MODELS=false or not set)")
+        logger.info("Models will load on first use (adds ~7s to first request)")
     
     logger.info("✓ Application ready!")
 
