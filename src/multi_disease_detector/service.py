@@ -555,142 +555,217 @@ async def generate_response_with_tools(
             # Call OpenRouter API with tools
             if enable_streaming:
                 # Streaming mode
-                stream = client.chat.completions.create(
-                    model=MODEL_NAME,
-                    messages=messages,
-                    tools=tools,
-                    max_tokens=MAX_RESPONSE_TOKENS,
-                    temperature=0.7,
-                    top_p=0.9,
-                    stream=True
-                )
+                logger.info(f"[Iteration {iteration}] Creating streaming completion request")
                 
-                # Process stream
-                current_tool_calls = []
-                current_content = ""
-                
-                for chunk in stream:
-                    delta = chunk.choices[0].delta if chunk.choices else None
+                try:
+                    stream = client.chat.completions.create(
+                        model=MODEL_NAME,
+                        messages=messages,
+                        tools=tools,
+                        max_tokens=MAX_RESPONSE_TOKENS,
+                        temperature=0.7,
+                        top_p=0.9,
+                        stream=True
+                    )
                     
-                    if delta and delta.content:
-                        # Content chunk
-                        current_content += delta.content
-                        yield {
-                            "type": "content",
-                            "data": delta.content,
-                            "timestamp": datetime.utcnow().isoformat()
-                        }
+                    # Stream health monitoring
+                    current_tool_calls = []
+                    current_content = ""
+                    chunk_count = 0
+                    finish_reason_received = None
+                    content_chunks_received = 0
                     
-                    if delta and delta.tool_calls:
-                        # Tool call chunk
-                        for tool_call_delta in delta.tool_calls:
-                            # Accumulate tool calls
-                            while len(current_tool_calls) <= tool_call_delta.index:
-                                current_tool_calls.append({
-                                    "id": "",
-                                    "type": "function",
-                                    "function": {"name": "", "arguments": ""}
-                                })
-                            
-                            tc = current_tool_calls[tool_call_delta.index]
-                            if tool_call_delta.id:
-                                tc["id"] = tool_call_delta.id
-                            if tool_call_delta.function:
-                                if tool_call_delta.function.name:
-                                    tc["function"]["name"] = tool_call_delta.function.name
-                                if tool_call_delta.function.arguments:
-                                    tc["function"]["arguments"] += tool_call_delta.function.arguments
+                    logger.info(f"[Iteration {iteration}] Stream created, processing chunks...")
                     
-                    # Check finish reason
-                    if chunk.choices and chunk.choices[0].finish_reason:
-                        finish_reason = chunk.choices[0].finish_reason
+                    for chunk in stream:
+                        chunk_count += 1
+                        delta = chunk.choices[0].delta if chunk.choices else None
                         
-                        if finish_reason == "tool_calls" and current_tool_calls:
-                            # AI wants to call tools
-                            accumulated_content += current_content
-                            
-                            # Add assistant message with tool calls to history
-                            messages.append({
-                                "role": "assistant",
-                                "content": current_content or None,
-                                "tool_calls": current_tool_calls
-                            })
-                            
-                            # Execute each tool call
-                            for tool_call in current_tool_calls:
-                                tool_name = tool_call["function"]["name"]
-                                tool_args = json.loads(tool_call["function"]["arguments"])
-                                tool_id = tool_call["id"]
-                                
-                                # Yield thinking about tool use
-                                yield {
-                                    "type": "thinking",
-                                    "data": f"I need to use the '{tool_name}' tool to help answer your question.",
-                                    "timestamp": datetime.utcnow().isoformat()
-                                }
-                                
-                                # Yield tool call info
-                                yield {
-                                    "type": "tool_call",
-                                    "data": {
-                                        "tool_name": tool_name,
-                                        "arguments": tool_args,
-                                        "call_id": tool_id
-                                    },
-                                    "timestamp": datetime.utcnow().isoformat()
-                                }
-                                
-                                # Execute tool
-                                tool_result = await execute_tool(tool_name, tool_args)
-                                tools_used.append(tool_name)
-                                
-                                # Yield tool result
-                                yield {
-                                    "type": "tool_result",
-                                    "data": {
-                                        "tool_name": tool_name,
-                                        "call_id": tool_id,
-                                        "result": tool_result,
-                                        "success": "error" not in tool_result.lower()
-                                    },
-                                    "timestamp": datetime.utcnow().isoformat()
-                                }
-                                
-                                # Add tool result to messages
-                                messages.append({
-                                    "role": "tool",
-                                    "tool_call_id": tool_id,
-                                    "content": tool_result
-                                })
-                                
-                                # Check if artifact was generated
-                                try:
-                                    result_data = json.loads(tool_result)
-                                    if result_data.get("type") in ["lab_explanation", "imaging_analysis", "medical_summary"]:
-                                        # This is an artifact instruction
-                                        yield {
-                                            "type": "thinking",
-                                            "data": f"I'll now create a detailed {result_data['type'].replace('_', ' ')} document for you...",
-                                            "timestamp": datetime.utcnow().isoformat()
-                                        }
-                                except:
-                                    pass
-                            
-                            # Continue loop to get AI's response with tool results
-                            break
-                        
-                        elif finish_reason == "stop":
-                            # AI is done
-                            accumulated_content += current_content
+                        if delta and delta.content:
+                            # Content chunk
+                            content_chunks_received += 1
+                            current_content += delta.content
+                            logger.debug(f"[Iteration {iteration}] Content chunk #{content_chunks_received}: {len(delta.content)} chars")
                             yield {
-                                "type": "done",
-                                "data": {
-                                    "message": accumulated_content,
-                                    "tools_used": tools_used
-                                },
+                                "type": "content",
+                                "data": delta.content,
                                 "timestamp": datetime.utcnow().isoformat()
                             }
-                            return
+                        
+                        if delta and delta.tool_calls:
+                            # Tool call chunk
+                            for tool_call_delta in delta.tool_calls:
+                                # Accumulate tool calls
+                                while len(current_tool_calls) <= tool_call_delta.index:
+                                    current_tool_calls.append({
+                                        "id": "",
+                                        "type": "function",
+                                        "function": {"name": "", "arguments": ""}
+                                    })
+                                
+                                tc = current_tool_calls[tool_call_delta.index]
+                                if tool_call_delta.id:
+                                    tc["id"] = tool_call_delta.id
+                                if tool_call_delta.function:
+                                    if tool_call_delta.function.name:
+                                        tc["function"]["name"] = tool_call_delta.function.name
+                                    if tool_call_delta.function.arguments:
+                                        tc["function"]["arguments"] += tool_call_delta.function.arguments
+                        
+                        # Check finish reason
+                        if chunk.choices and chunk.choices[0].finish_reason:
+                            finish_reason = chunk.choices[0].finish_reason
+                            finish_reason_received = finish_reason
+                            logger.info(f"[Iteration {iteration}] Received finish_reason: {finish_reason}")
+                            
+                            if finish_reason == "tool_calls" and current_tool_calls:
+                                # AI wants to call tools
+                                logger.info(f"[Iteration {iteration}] AI requesting tool calls: {[tc['function']['name'] for tc in current_tool_calls]}")
+                                accumulated_content += current_content
+                                
+                                # Add assistant message with tool calls to history
+                                messages.append({
+                                    "role": "assistant",
+                                    "content": current_content or None,
+                                    "tool_calls": current_tool_calls
+                                })
+                                
+                                # Execute each tool call
+                                for tool_call in current_tool_calls:
+                                    tool_name = tool_call["function"]["name"]
+                                    tool_args = json.loads(tool_call["function"]["arguments"])
+                                    tool_id = tool_call["id"]
+                                    
+                                    logger.info(f"[Iteration {iteration}] Executing tool: {tool_name}")
+                                    
+                                    # Yield thinking about tool use
+                                    yield {
+                                        "type": "thinking",
+                                        "data": f"I need to use the '{tool_name}' tool to help answer your question.",
+                                        "timestamp": datetime.utcnow().isoformat()
+                                    }
+                                    
+                                    # Yield tool call info
+                                    yield {
+                                        "type": "tool_call",
+                                        "data": {
+                                            "tool_name": tool_name,
+                                            "arguments": tool_args,
+                                            "call_id": tool_id
+                                        },
+                                        "timestamp": datetime.utcnow().isoformat()
+                                    }
+                                    
+                                    # Execute tool
+                                    tool_result = await execute_tool(tool_name, tool_args)
+                                    tools_used.append(tool_name)
+                                    logger.info(f"[Iteration {iteration}] Tool {tool_name} executed, result length: {len(tool_result)} chars")
+                                    
+                                    # Yield tool result
+                                    yield {
+                                        "type": "tool_result",
+                                        "data": {
+                                            "tool_name": tool_name,
+                                            "call_id": tool_id,
+                                            "result": tool_result,
+                                            "success": "error" not in tool_result.lower()
+                                        },
+                                        "timestamp": datetime.utcnow().isoformat()
+                                    }
+                                    
+                                    # Add tool result to messages
+                                    messages.append({
+                                        "role": "tool",
+                                        "tool_call_id": tool_id,
+                                        "content": tool_result
+                                    })
+                                    
+                                    # Check if artifact was generated
+                                    try:
+                                        result_data = json.loads(tool_result)
+                                        if result_data.get("type") in ["lab_explanation", "imaging_analysis", "medical_summary"]:
+                                            # This is an artifact instruction
+                                            yield {
+                                                "type": "thinking",
+                                                "data": f"I'll now create a detailed {result_data['type'].replace('_', ' ')} document for you...",
+                                                "timestamp": datetime.utcnow().isoformat()
+                                            }
+                                    except:
+                                        pass
+                                
+                                logger.info(f"[Iteration {iteration}] Tools executed, continuing to next iteration for AI response")
+                                # Continue loop to get AI's response with tool results
+                                break
+                            
+                            elif finish_reason == "stop":
+                                # AI is done
+                                logger.info(f"[Iteration {iteration}] AI completed response. Total content: {len(current_content)} chars, Total chunks: {chunk_count}")
+                                accumulated_content += current_content
+                                yield {
+                                    "type": "done",
+                                    "data": {
+                                        "message": accumulated_content,
+                                        "tools_used": tools_used
+                                    },
+                                    "timestamp": datetime.utcnow().isoformat()
+                                }
+                                return
+                            
+                            elif finish_reason == "length":
+                                # Response truncated
+                                logger.warning(f"[Iteration {iteration}] Response truncated due to max_tokens limit")
+                                accumulated_content += current_content
+                                yield {
+                                    "type": "done",
+                                    "data": {
+                                        "message": accumulated_content,
+                                        "tools_used": tools_used
+                                    },
+                                    "timestamp": datetime.utcnow().isoformat()
+                                }
+                                return
+                    
+                    # CRITICAL FIX: Stream ended without proper finish_reason
+                    logger.warning(
+                        f"[Iteration {iteration}] Stream ended abnormally! "
+                        f"Chunks received: {chunk_count}, Content chunks: {content_chunks_received}, "
+                        f"Finish reason: {finish_reason_received}, Current content length: {len(current_content)}"
+                    )
+                    
+                    # Fallback completion logic
+                    if current_content:
+                        # We have content but no proper finish_reason
+                        logger.info(f"[Iteration {iteration}] Yielding 'done' event with accumulated content (fallback)")
+                        accumulated_content += current_content
+                        yield {
+                            "type": "done",
+                            "data": {
+                                "message": accumulated_content,
+                                "tools_used": tools_used
+                            },
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                        return
+                    elif finish_reason_received is None and chunk_count == 0:
+                        # Empty stream - critical error
+                        logger.error(f"[Iteration {iteration}] Empty stream received! No chunks at all.")
+                        # Don't return yet, let it retry in next iteration
+                    else:
+                        # Stream ended with some chunks but no content and no finish_reason
+                        logger.warning(f"[Iteration {iteration}] Stream ended with {chunk_count} chunks but no content. Retrying...")
+                        # Continue to next iteration to retry
+                
+                except Exception as e:
+                    logger.error(f"[Iteration {iteration}] Stream error: {str(e)}", exc_info=True)
+                    # Don't yield error immediately, let it retry in next iteration
+                    if iteration >= max_tool_iterations - 1:
+                        # Last iteration, yield error
+                        yield {
+                            "type": "error",
+                            "data": f"Stream error: {str(e)}",
+                            "timestamp": datetime.utcnow().isoformat()
+                        }
+                        return
             
             else:
                 # Non-streaming mode
