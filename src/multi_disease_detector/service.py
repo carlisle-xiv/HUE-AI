@@ -296,9 +296,25 @@ def build_chat_messages(
         "Be conversational and supportive while maintaining medical accuracy."
     )
     
+    # Add image-specific instruction if patient_context contains image analysis
+    if patient_context and "Image Analysis" in patient_context:
+        system_content += (
+            "\n\n**CRITICAL INSTRUCTION - Image Analysis Present:**\n"
+            "The Patient Context below includes detailed image analysis from our vision AI system. "
+            "Your response MUST focus on explaining the SPECIFIC findings, measurements, and observations "
+            "from the patient's actual images. Do NOT provide generic educational information about what "
+            "such scans 'usually show' or 'can reveal'. Instead:\n"
+            "1. Reference the specific structures, measurements, and features observed in THEIR images\n"
+            "2. Explain what those particular findings might indicate for THIS patient\n"
+            "3. Provide actionable guidance based on THEIR specific results\n"
+            "4. If multiple images are present, address each one specifically\n"
+            "The patient wants to understand THEIR scan results, not general information."
+        )
+    
     # Add patient context to system message if available
     if patient_context:
         system_content += f"\n\nPatient Context:\n{patient_context}"
+        logger.info(f"Patient context injected into system message ({len(patient_context)} chars)")
     
     messages.append({
         "role": "system",

@@ -41,9 +41,21 @@ app.add_middleware(
 async def startup_event():
     """
     Application startup event.
+    Preloads models and resources for optimal first-request performance.
     """
     logger.info("Starting HUE-AI application...")
     logger.info("Multi Disease Detector using OpenRouter API (openai/gpt-oss-120b)")
+    
+    # Preload MiniLM model for risk assessment (eliminates 7s delay on first request)
+    logger.info("Preloading MiniLM model for risk assessment...")
+    from src.multi_disease_detector.risk_assessment import get_sentence_transformer
+    model = get_sentence_transformer()
+    
+    if model is not None:
+        logger.info("✓ MiniLM model preloaded successfully")
+    else:
+        logger.warning("⚠ MiniLM model failed to load - will use rule-based fallback")
+    
     logger.info("✓ Application ready!")
 
 
