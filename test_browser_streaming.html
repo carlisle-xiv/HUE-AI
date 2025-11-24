@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE Streaming Test - Interactive</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        #queryInput {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        #queryInput:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .stop-btn {
+            background: #f44336;
+        }
+        .stop-btn:hover {
+            background: #da190b;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .examples {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+        .examples h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .example-btn {
+            background: #2196F3;
+            padding: 6px 12px;
+            font-size: 13px;
+            margin: 4px;
+        }
+        .example-btn:hover {
+            background: #0b7dda;
+        }
+        #output {
+            border: 2px solid #ddd;
+            padding: 15px;
+            min-height: 200px;
+            max-height: 500px;
+            overflow-y: auto;
+            background: #fafafa;
+            white-space: pre-wrap;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        #output.streaming {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+        }
+        .timing {
+            font-family: monospace;
+            color: #666;
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .timing strong {
+            color: #4CAF50;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            display: inline-block;
+        }
+        .status.idle {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .status.streaming {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 Real-Time Streaming Test</h1>
+        <p class="subtitle">Interactive tool to test and validate SSE streaming with custom queries</p>
+        
+        <div class="input-section">
+            <label for="queryInput">Your Question:</label>
+            <textarea id="queryInput" rows="3" placeholder="Enter your medical question here...">What are the symptoms of diabetes?</textarea>
+        </div>
+        
+        <div class="examples">
+            <h3>📋 Quick Examples (click to use):</h3>
+            <button class="example-btn" onclick="setQuery('What are the symptoms of diabetes?')">Diabetes Symptoms</button>
+            <button class="example-btn" onclick="setQuery('Explain hypertension treatment in detail')">Hypertension</button>
+            <button class="example-btn" onclick="setQuery('What causes high blood pressure?')">Blood Pressure</button>
+            <button class="example-btn" onclick="setQuery('How can I lower my cholesterol naturally?')">Cholesterol</button>
+            <button class="example-btn" onclick="setQuery('What are the early warning signs of heart disease?')">Heart Disease</button>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn" onclick="startStream()">▶ Start Stream</button>
+            <button id="stopBtn" class="stop-btn" onclick="stopStream()" disabled>⬛ Stop Stream</button>
+            <div class="checkbox-container">
+                <input type="checkbox" id="streamToggle" checked>
+                <label for="streamToggle" style="margin: 0; font-weight: normal;">Enable Streaming</label>
+            </div>
+            <span id="status" class="status idle">Ready</span>
+        </div>
+        
+        <div id="output"></div>
+        <div class="timing" id="timing">Waiting to start...</div>
+    </div>
+    
+    <script>
+        let currentReader = null;
+        let isStreaming = false;
+        
+        function setQuery(query) {
+            document.getElementById('queryInput').value = query;
+        }
+        
+        function updateStatus(text, type) {
+            const status = document.getElementById('status');
+            status.textContent = text;
+            status.className = `status ${type}`;
+        }
+        
+        function startStream() {
+            const output = document.getElementById('output');
+            const timing = document.getElementById('timing');
+            const queryInput = document.getElementById('queryInput');
+            const streamEnabled = document.getElementById('streamToggle').checked;
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            const query = queryInput.value.trim();
+            if (!query) {
+                alert('Please enter a question!');
+                return;
+            }
+            
+            output.innerHTML = '';
+            timing.innerHTML = 'Starting...';
+            isStreaming = true;
+            
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            output.classList.add('streaming');
+            
+            updateStatus('Streaming...', 'streaming');
+            
+            let chunkCount = 0;
+            let thinkingCount = 0;
+            let toolCount = 0;
+            let firstChunkTime = null;
+            let lastChunkTime = null;
+            const startTime = performance.now() / 1000;
+            
+            fetch('http://localhost:8000/api/v1/multi-disease-detector/v1/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    message: query,
+                    stream: streamEnabled
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                if (!streamEnabled) {
+                    return response.json().then(data => {
+                        output.innerHTML = data.message || JSON.stringify(data, null, 2);
+                        timing.innerHTML = `<strong>Non-Streaming Complete!</strong><br>
+                            Response length: ${(data.message || '').length} chars<br>
+                            Risk: ${data.risk_assessment}<br>
+                            Tools used: ${data.tools_used?.join(', ') || 'none'}`;
+                        updateStatus('Complete', 'idle');
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        isStreaming = false;
+                    });
+                }
+                
+                const reader = response.body.getReader();
+                currentReader = reader;
+                const decoder = new TextDecoder();
+                
+                function read() {
+                    if (!isStreaming) {
+                        reader.cancel();
+                        return;
+                    }
+                    
+                    reader.read().then(({done, value}) => {
+                        if (done) {
+                            const duration = lastChunkTime - firstChunkTime;
+                            timing.innerHTML = `<strong>✅ Stream Complete!</strong><br>
+                                Content chunks: ${chunkCount}<br>
+                                Thinking events: ${thinkingCount}<br>
+                                Tool calls: ${toolCount}<br>
+                                Duration: ${duration ? duration.toFixed(2) : 0}s<br>
+                                Avg interval: ${duration && chunkCount ? (duration / chunkCount * 1000).toFixed(1) : 0}ms<br>
+                                Total time: ${(performance.now() / 1000 - startTime).toFixed(2)}s`;
+                            updateStatus('Complete', 'idle');
+                            startBtn.disabled = false;
+                            stopBtn.disabled = true;
+                            output.classList.remove('streaming');
+                            isStreaming = false;
+                            currentReader = null;
+                            return;
+                        }
+                        
+                        const text = decoder.decode(value);
+                        const lines = text.split('\n');
+                        
+                        lines.forEach(line => {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                
+                                if (data === '[DONE]') {
+                                    return;
+                                }
+                                
+                                try {
+                                    const event = JSON.parse(data);
+                                    const now = performance.now() / 1000;
+                                    
+                                    if (event.type === 'content') {
+                                        if (firstChunkTime === null) {
+                                            firstChunkTime = now;
+                                        }
+                                        lastChunkTime = now;
+                                        chunkCount++;
+                                        
+                                        output.innerHTML += event.data;
+                                        
+                                        // Update timing in real-time
+                                        if (chunkCount % 10 === 0) {
+                                            const duration = now - firstChunkTime;
+                                            timing.innerHTML = `⚡ Streaming...<br>
+                                                Chunks: ${chunkCount}<br>
+                                                Duration: ${duration.toFixed(2)}s<br>
+                                                Avg: ${(duration / chunkCount * 1000).toFixed(1)}ms/chunk`;
+                                        }
+                                        
+                                        // Console log with timing
+                                        console.log(`[${now.toFixed(3)}s] ${event.data}`);
+                                    } else if (event.type === 'thinking') {
+                                        thinkingCount++;
+                                        console.log(`💭 Thinking: ${event.data}`);
+                                    } else if (event.type === 'tool') {
+                                        toolCount++;
+                                        const toolData = event.data;
+                                        console.log(`🔧 Tool: ${toolData.tool_name} (${toolData.status})`);
+                                    } else if (event.type === 'complete') {
+                                        console.log('✅ Complete event:', event.data);
+                                    }
+                                } catch(e) {
+                                    console.error('Parse error:', e);
+                                }
+                            }
+                        });
+                        
+                        read();
+                    }).catch(err => {
+                        console.error('Stream error:', err);
+                        updateStatus('Error: ' + err.message, 'error');
+                        timing.innerHTML = `<strong>❌ Stream Error!</strong><br>${err.message}`;
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        output.classList.remove('streaming');
+                        isStreaming = false;
+                    });
+                }
+                read();
+            }).catch(err => {
+                console.error('Fetch error:', err);
+                output.innerHTML = `Error: ${err.message}`;
+                timing.innerHTML = `<strong>❌ Error!</strong><br>${err.message}<br><br>Is the server running?`;
+                updateStatus('Error', 'error');
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                output.classList.remove('streaming');
+                isStreaming = false;
+            });
+        }
+        
+        function stopStream() {
+            if (currentReader) {
+                currentReader.cancel();
+                currentReader = null;
+            }
+            isStreaming = false;
+            updateStatus('Stopped', 'idle');
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('output').classList.remove('streaming');
+            
+            const timing = document.getElementById('timing');
+            timing.innerHTML += '<br><strong>⏸️ Stream stopped by user</strong>';
+        }
+        
+        // Allow Enter key to submit (with Shift+Enter for newlines)
+        document.getElementById('queryInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                startStream();
+            }
+        });
+    </script>
+</body>
+</html>
+

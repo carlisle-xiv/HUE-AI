@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Dict, Any, Optional, AsyncGenerator
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from .image_utils import (
@@ -205,11 +205,11 @@ async def analyze_medical_image(
         prepared_image = prepare_image_for_api(image_bytes, filename)
         base64_image = prepared_image["base64"]
         
-        # Get OpenAI client (configured for OpenRouter)
+        # Get AsyncOpenAI client (configured for OpenRouter)
         if not OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY not found in environment variables")
         
-        client = OpenAI(
+        client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY
         )
@@ -219,7 +219,7 @@ async def analyze_medical_image(
         
         # Call GPT-4 vision
         logger.info(f"Calling GPT-4o vision model: {GPT5_MODEL}")
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=GPT5_MODEL,
             messages=[
                 {
@@ -344,7 +344,7 @@ async def analyze_medical_image_streaming(
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        # Get OpenAI client
+        # Get AsyncOpenAI client
         if not OPENROUTER_API_KEY:
             yield {
                 "type": "error",
@@ -353,7 +353,7 @@ async def analyze_medical_image_streaming(
             }
             return
         
-        client = OpenAI(
+        client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY
         )
@@ -364,7 +364,7 @@ async def analyze_medical_image_streaming(
         # Call GPT-5 vision (streaming)
         logger.info(f"Calling GPT-4o vision model (streaming): {GPT5_MODEL}")
         
-        stream = client.chat.completions.create(
+        stream = await client.chat.completions.create(
             model=GPT5_MODEL,
             messages=[
                 {
@@ -394,7 +394,7 @@ async def analyze_medical_image_streaming(
         
         # Accumulate response
         response_text = ""
-        for chunk in stream:
+        async for chunk in stream:
             if chunk.choices and chunk.choices[0].delta.content:
                 response_text += chunk.choices[0].delta.content
         
