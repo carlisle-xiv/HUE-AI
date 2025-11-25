@@ -58,6 +58,8 @@ class Patient(SQLModel, table=True):
     emergency_visits: list["EmergencyVisit"] = Relationship(back_populates="patient")
     hospital_lab_tests: list["HospitalLabTest"] = Relationship(back_populates="patient")
     hospital_bills: list["HospitalBill"] = Relationship(back_populates="patient")
+    allergies: list["PatientAllergy"] = Relationship(back_populates="patient")
+    drug_suggestions: list["DrugSuggestion"] = Relationship(back_populates="patient")
 
 
 class PatientVital(SQLModel, table=True):
@@ -155,4 +157,5 @@ if TYPE_CHECKING:
         HospitalAdmission, Surgery, EmergencyVisit,
         HospitalLabTest, HospitalBill
     )
+    from .drug_suggester import PatientAllergy, DrugSuggestion
 

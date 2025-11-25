@@ -131,6 +131,13 @@ from .drug_authenticity import (
     DrugAuthenticityCheck,
 )
 
+# Import drug suggester models - MIGRATION 13
+from .drug_suggester import (
+    PatientAllergy,
+    DrugInteractionCache,
+    DrugSuggestion,
+)
+
 # Export all models - MIGRATION 1-3
 __all__ = [
     # Base
@@ -235,5 +242,10 @@ __all__ = [
     
     # Drug Authenticity - MIGRATION 12
     "DrugAuthenticityCheck",
+    
+    # Drug Suggester - MIGRATION 13
+    "PatientAllergy",
+    "DrugInteractionCache",
+    "DrugSuggestion",
 ]
 

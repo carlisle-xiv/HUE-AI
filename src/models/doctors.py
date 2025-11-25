@@ -68,6 +68,8 @@ class Doctor(SQLModel, table=True):
     )
     emergency_visits: list["EmergencyVisit"] = Relationship(back_populates="attending_doctor")
     hospital_lab_tests: list["HospitalLabTest"] = Relationship(back_populates="ordering_doctor")
+    diagnosed_allergies: list["PatientAllergy"] = Relationship(back_populates="diagnosed_by")
+    drug_suggestions: list["DrugSuggestion"] = Relationship(back_populates="doctor")
 
 
 class DoctorSchedule(SQLModel, table=True):
@@ -102,4 +104,5 @@ if TYPE_CHECKING:
     from .hospital_operations import (
         HospitalAdmission, Surgery, EmergencyVisit, HospitalLabTest
     )
+    from .drug_suggester import PatientAllergy, DrugSuggestion
 
