@@ -737,17 +737,25 @@ async def generate_response_with_tools(
                     # Fallback completion logic
                     if current_content:
                         # We have content but no proper finish_reason
-                        logger.info(f"[Iteration {iteration}] Yielding 'done' event with accumulated content (fallback)")
                         accumulated_content += current_content
-                        yield {
-                            "type": "done",
-                            "data": {
-                                "message": accumulated_content,
-                                "tools_used": tools_used
-                            },
-                            "timestamp": datetime.utcnow().isoformat()
-                        }
-                        return
+                        
+                        # Check if this is due to tool calls
+                        if finish_reason_received == "tool_calls":
+                            # Tools were executed successfully, continue to next iteration for AI response
+                            logger.info(f"[Iteration {iteration}] Tools executed, continuing to iteration {iteration + 1} for final response")
+                            continue  # ← FIX: Continue while loop to iteration 2
+                        else:
+                            # This is a real abnormal end without tool calls - send what we have
+                            logger.info(f"[Iteration {iteration}] Yielding 'done' event with accumulated content (no tool calls)")
+                            yield {
+                                "type": "done",
+                                "data": {
+                                    "message": accumulated_content,
+                                    "tools_used": tools_used
+                                },
+                                "timestamp": datetime.utcnow().isoformat()
+                            }
+                            return
                     elif finish_reason_received is None and chunk_count == 0:
                         # Empty stream - critical error
                         logger.error(f"[Iteration {iteration}] Empty stream received! No chunks at all.")
