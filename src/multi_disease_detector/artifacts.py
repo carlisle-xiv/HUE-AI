@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from io import BytesIO
 
 # Configure logging
 logger = logging.getLogger(__name__)

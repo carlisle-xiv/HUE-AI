@@ -1,9 +1,3 @@
-"""
-Service layer for drug authenticity verification.
-Handles Tavily search integration and database caching.
-"""
-
-import json
 import logging
 import os
 import re
