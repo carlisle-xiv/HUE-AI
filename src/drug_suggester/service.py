@@ -1,8 +1,3 @@
-"""
-Core drug suggester service that orchestrates patient context gathering,
-interaction checking, guideline lookup, and AI-powered recommendations.
-"""
-
 import json
 import logging
 import os
@@ -13,9 +8,7 @@ from decimal import Decimal
 from sqlmodel import Session, select, and_, or_
 from dotenv import load_dotenv
 
-from src.database import engine
 from src.models.patients import Patient, PatientCondition, PatientVital
-from src.models.doctors import Doctor
 from src.models.prescriptions import Prescription, PrescriptionItem
 from src.models.pharmacy import Pharmacy, PharmacyInventory
 from src.models.reference import PharmacyCode, MedicalCode
@@ -813,5 +806,5 @@ async def _save_suggestion_to_db(
         
     except Exception as e:
         logger.error(f"Error saving suggestion to database: {str(e)}")
-        # Don't fail the request if saving fails
+        # So we don't fail the request if saving fails
 

@@ -1,7 +1,3 @@
-"""
-Schemas for drug suggester API requests and responses.
-"""
-
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID

@@ -1,7 +1,3 @@
-"""
-Drug suggester router with API endpoints.
-"""
-
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session

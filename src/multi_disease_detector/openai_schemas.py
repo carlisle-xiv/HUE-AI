@@ -196,7 +196,7 @@ class OpenAIChatRequest(BaseModel):
                 "max_tokens": 1024,
                 "stream": False,
                 "patient_context": {
-                    "patient_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "patient_id": "55000000-e000-4000-a000-000000000000",
                     "vitals_data": {
                         "blood_pressure_systolic": 130,
                         "heart_rate_bpm": 75

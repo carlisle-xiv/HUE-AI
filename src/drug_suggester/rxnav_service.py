@@ -1,14 +1,8 @@
-"""
-RxNav API integration service for drug interaction checking and normalization.
-Provides caching for performance optimization.
-"""
 
-import json
 import logging
 import httpx
-from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
-from decimal import Decimal
+from datetime import datetime, UTC
+from typing import Dict, Any, List, Optional
 
 from sqlmodel import Session, select
 from src.database import engine
