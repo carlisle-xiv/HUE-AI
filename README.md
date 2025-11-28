@@ -2,6 +2,14 @@
 
 AI-powered health and wellness platform built with FastAPI, integrating cutting-edge AI models for comprehensive medical assistance, diagnostics, and healthcare management.
 
+**🎯 What Sets HUE-AI Apart:**
+- 🧠 **Multiple AI-Powered Features**: Not just chat - includes drug suggestions with safety checks and authenticity verification
+- 🇬🇭 **Ghana-Specific**: Integrated Ghana STG and EML for localized healthcare
+- 🔒 **Safety-First**: Multi-level drug interaction checking, allergy validation, and risk assessment
+- 🌐 **Current Information**: Real-time web search for latest medical guidelines
+- 💼 **Production-Ready**: Complete healthcare management platform, not just a demo
+- ⚡ **Instant Startup**: No model downloads, API-based for immediate deployment
+
 ## 🌟 Features
 
 ### 1. Multi-Disease Detector 🩺
@@ -26,9 +34,40 @@ AI-powered health and wellness platform built with FastAPI, integrating cutting-
 - ✅ **Current Medical Information** - Web search integration keeps data fresh
 - ✅ **Professional Documentation** - Downloadable reports for healthcare providers
 - ✅ **Enhanced Trust** - Tool visibility and thinking process build user confidence
-- ✅ **Competitive Edge** - Matches and exceeds capabilities of platforms like MoreMeAI
+- ✅ **No Local GPU Required** - All processing via OpenRouter API (instant startup)
 
-### 2. Comprehensive Healthcare Platform 🏥
+### 2. Drug Suggester 💊
+
+**Intelligent medication recommendation system for healthcare providers in Ghana.**
+
+#### Core Capabilities:
+- **Comprehensive Patient Analysis**: Reviews medical history, allergies, and current medications
+- **Safety Checks**: Drug-drug interactions via RxNav API, allergy checking, contraindication verification
+- **Evidence-Based Guidelines**: Searches Ghana Standard Treatment Guidelines and Essential Medicine List
+- **Facility Integration**: Multi-pharmacy inventory checking with stock levels and pricing
+- **AI-Powered Recommendations**: Intelligent drug selection with personalized dosing
+- **Audit Trail**: Complete logging of all suggestions for clinical review
+
+#### Features:
+- 🛡️ **Multi-level Safety**: Interaction detection (safe/minor/moderate/severe)
+- 📚 **Ghana Guidelines**: Web-based current Ghana STG and EML integration
+- 🏥 **Real-time Inventory**: Checks drug availability across multiple facilities
+- 🤖 **Intelligent Dosing**: Age, weight, and condition-specific calculations
+- 📝 **Clinical Rationale**: Explains drug selection and dosing decisions
+
+### 3. Drug Authenticity Checker 🔍
+
+**Automated drug verification system to combat counterfeit medications.**
+
+#### Features:
+- 🔎 **Web Search Verification**: Automated searches across trusted sources
+- 🏭 **Manufacturer Verification**: Validates manufacturer and regulatory approval
+- ⚠️ **Counterfeit Alerts**: Detects and reports counterfeit warnings
+- 💾 **Result Caching**: 30-day cache for improved performance
+- 📊 **Confidence Scoring**: Provides verification confidence levels
+- 🔗 **Source References**: Links to verification sources (FDA, drugs.com, etc.)
+
+### 4. Comprehensive Healthcare Platform 🏥
 
 Full-featured healthcare management system with:
 - **Patient & Doctor Management**: Complete profiles and specializations
@@ -39,6 +78,47 @@ Full-featured healthcare management system with:
 - **Insurance Integration**: Claims and coverage management
 - **Medical Records**: Lab tests, imaging results, and clinical notes
 - **Reference Data**: ICD-10 codes, CPT codes, medication database
+
+## 🔄 Feature Comparison
+
+| Feature | Multi-Disease Detector | Drug Suggester | Drug Authenticity | Healthcare Platform |
+|---------|----------------------|----------------|-------------------|-------------------|
+| **AI Powered** | ✅ oss-120b   | ✅ oss-120b |     ✅ via web search | ❌ Traditional |
+| **Target Users** | Doctors(primarily), patients(casual) | Healthcare Providers | Everyone | Healthcare System |
+| **Primary Use** | Symptom analysis | Medication recommendations | Drug verification | Data management |
+| **Real-time Streaming** | ✅ Yes | ❌ No | ❌ No | N/A |
+| **Web Search** | ✅ Tavily | ✅ Tavily | ✅ Tavily | ❌ No |
+| **Database Integration** | ✅ Patient data | ✅ Inventory/RxNav | ✅ Cache | ✅ Full EHR |
+| **Document Generation** | ✅ PDF/HTML | ❌ No | ❌ No | ❌ No |
+| **Session Management** | ✅ Multi-session | ❌ Single request | ❌ Single request | ✅ Full tracking |
+| **Safety Checks** | ✅ Risk assessment | ✅ Interactions/Allergies | ⚠️ Authenticity only | ❌ No |
+| **Ghana-Specific** | ❌ General | ✅ STG/EML | ❌ General | ❌ General |
+
+### 🎯 Key Capabilities Summary
+
+**Multi-Disease Detector** is best for:
+- ✅ Patient self-assessment and education
+- ✅ Understanding medical test results
+- ✅ Getting latest treatment information
+- ✅ Real-time conversational medical guidance
+
+**Drug Suggester** is best for:
+- ✅ Healthcare providers prescribing in Ghana
+- ✅ Reducing prescription errors
+- ✅ Checking drug availability before prescribing
+- ✅ Following Ghana STG and EML guidelines
+
+**Drug Authenticity** is best for:
+- ✅ Patients verifying medication legitimacy
+- ✅ Pharmacists confirming drug authenticity
+- ✅ Combating counterfeit medications
+- ✅ Quick verification with trusted sources
+
+**Healthcare Platform** is best for:
+- ✅ Complete hospital/clinic management
+- ✅ Patient records and appointments
+- ✅ Prescription and pharmacy integration
+- ✅ Insurance and billing management
 
 ## 📁 Project Structure
 
@@ -61,36 +141,49 @@ HUE-AI/
 │   │   ├── insurance.py             # Insurance and claims
 │   │   ├── tests.py                 # Lab tests and imaging
 │   │   ├── reference.py             # Medical codes (ICD-10, CPT)
-│   │   └── multi_disease_detector.py # AI chat sessions
-│   └── multi_disease_detector/      # AI Medical Assistant Feature
-│       ├── models.py                # Model re-exports
-│       ├── schemas.py               # Request/response schemas
-│       ├── service.py               # Core business logic & AI integration
+│   │   ├── multi_disease_detector.py # AI chat sessions
+│   │   ├── drug_suggester.py        # Drug suggester models
+│   │   └── drug_authenticity.py     # Drug authenticity checks
+│   ├── multi_disease_detector/      # AI Medical Assistant Feature
+│   │   ├── models.py                # Model re-exports
+│   │   ├── schemas.py               # Request/response schemas
+│   │   ├── service.py               # Core business logic & AI integration
+│   │   ├── router.py                # API endpoints
+│   │   ├── tools.py                 # Tool definitions (OpenRouter format)
+│   │   ├── tool_service.py          # Tool execution (Tavily integration)
+│   │   ├── artifacts.py             # Document generation & PDF conversion
+│   │   ├── vision_service.py        # Image analysis capabilities
+│   │   └── README.md                # Feature documentation
+│   ├── drug_suggester/              # Drug Recommendation System
+│   │   ├── router.py                # API endpoints
+│   │   ├── schemas.py               # Request/response schemas
+│   │   ├── service.py               # Core suggestion logic & AI
+│   │   ├── rxnav_service.py         # RxNav API integration
+│   │   └── README.md                # Feature documentation
+│   └── drug_recommendation/         # Drug Authenticity Verification
 │       ├── router.py                # API endpoints
-│       ├── tools.py                 # Tool definitions (OpenRouter format)
-│       ├── tool_service.py          # Tool execution (Tavily integration)
-│       ├── artifacts.py             # Document generation & PDF conversion
-│       └── README.md                # Feature documentation
+│       ├── schemas.py               # Request/response schemas
+│       └── service.py               # Authenticity checking logic
 ├── alembic/                         # Database migrations
 │   └── versions/                    # Migration files
 ├── requirements.txt                 # Python dependencies
-├── QUICK_START.md                   # Quick setup guide
-├── SETUP_NEW_FEATURES.md            # Tool calling setup
-├── TOOL_CALLING_AND_STREAMING_GUIDE.md  # Comprehensive usage guide
-└── test_tools_and_streaming.py     # Test suite for new features
+├── seed_test_data.py                # General test data seeder
+├── seed_drug_suggester_test_data.py # Drug suggester test data
+├── test_drug_suggester_comprehensive.py # Drug suggester tests
+├── test_risk_assessment.py          # Risk assessment tests
+├── test_streaming_fix.py            # Streaming functionality tests
+└── test_client_streaming.py         # Client-side streaming tests
 ```
 
 ## 🚀 Quick Start
-
-**TL;DR:** See [QUICK_START.md](QUICK_START.md) for a rapid setup guide!
 
 ### 1. Prerequisites
 
 - Python 3.11+
 - PostgreSQL database
 - API Keys:
-  - [OpenRouter](https://openrouter.ai/) - For AI model access
-  - [Tavily](https://tavily.com/) - For web search (free tier available)
+  - [OpenRouter](https://openrouter.ai/) 
+  - [Tavily](https://tavily.com/) 
 
 ### 2. Install Dependencies
 
@@ -133,15 +226,16 @@ DEBUG=True
 
 **Getting API Keys:**
 
-1. **OpenRouter** (Required for AI features):
-   - Sign up at [openrouter.ai](https://openrouter.ai/)
-   - Navigate to API Keys section
-   - Create a new key (starts with `sk-or-v1-`)
-
-2. **Tavily** (Required for web search tool):
+2. **Tavily** (Required for web search):
    - Sign up at [tavily.com](https://tavily.com/)
-   - Free tier: ~1,000 searches/month
+   - Free tier: ~1,000 searches/month (sufficient for testing)
    - Copy your API key (starts with `tvly-`)
+   - Used by: All features for current medical information
+   
+3. **RxNav API** (Automatic - No key needed):
+   - Free NIH public API for drug interactions
+   - No registration required
+   - Automatically used by Drug Suggester
 
 ### 4. Set Up Database
 
@@ -163,6 +257,20 @@ This creates tables for:
 - Lab tests and imaging
 - Insurance and claims
 - AI chat sessions
+- Drug suggester (allergies, interactions cache, suggestions)
+- Drug authenticity checks
+
+**Optional: Seed Test Data**
+
+```bash
+# Seed general test data (patients, doctors, hospitals)
+python seed_test_data.py
+
+# Seed drug suggester specific data (drug codes, inventory, allergies)
+python seed_drug_suggester_test_data.py
+```
+
+This is helpful for testing and development.
 
 ### 5. Run the Application
 
@@ -178,27 +286,35 @@ The API will be available at `http://localhost:8000`
 
 **✅ Fast Startup**: Application starts instantly using OpenRouter's API. No model downloads required!
 
-### 6. Test the Multi-Disease Detector
+### 6. Test the System
 
 ```bash
-# Run the comprehensive test suite
-python test_tools_and_streaming.py
+# Test drug suggester
+python test_drug_suggester_comprehensive.py
+
+# Test risk assessment
+python test_risk_assessment.py
+
+# Test streaming functionality
+python test_streaming_fix.py
+
+# Test client-side streaming
+python test_client_streaming.py
 ```
 
 This validates:
-- ✅ Tool definitions (4 tools)
-- ✅ Schema validation
-- ✅ Artifact generation
-- ✅ HTML/PDF conversion
-- ✅ Tavily web search integration
-- ✅ Tool execution service
+- ✅ Drug suggester recommendations
+- ✅ Risk assessment algorithms
+- ✅ Streaming functionality
+- ✅ Tool execution
+- ✅ RxNav integration
+- ✅ Tavily web search
 
 ## 📚 API Documentation
 
 Once running, visit:
 - **Swagger UI**: `http://localhost:8000/docs` (Interactive API testing)
 - **ReDoc**: `http://localhost:8000/redoc` (Detailed documentation)
-- **Comprehensive Guide**: See [TOOL_CALLING_AND_STREAMING_GUIDE.md](TOOL_CALLING_AND_STREAMING_GUIDE.md)
 
 ### Key Endpoints
 
@@ -213,6 +329,29 @@ Once running, visit:
 | `/chat/stream` | POST | **Real-time streaming with thinking process** |
 | `/artifacts/to-html` | POST | Convert artifact to HTML |
 | `/artifacts/generate-pdf` | POST | Generate downloadable PDF |
+| `/sessions/{patient_id}` | GET | List all chat sessions for a patient |
+| `/sessions/{session_id}/history` | GET | Get conversation history |
+| `/sessions/{session_id}/close` | POST | Close a session |
+
+#### Drug Suggester
+
+**Base URL:** `/api/v1/drug-suggester`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/suggest` | POST | Generate drug suggestions for patient |
+| `/health` | GET | Service health check |
+| `/` | GET | Service information |
+
+#### Drug Authenticity
+
+**Base URL:** `/api/v1/drug-authenticity`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/check` | POST | Verify drug authenticity |
+| `/health` | GET | Service health check |
+| `/` | GET | Service information |
 
 ### Quick API Examples
 
@@ -267,6 +406,46 @@ curl -X POST "http://localhost:8000/api/v1/multi-disease-detector/chat" \
   }'
 ```
 
+#### 4. Drug Suggestions
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/drug-suggester/suggest" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "550e8400-e29b-41d4-a716-446655440000",
+    "diagnosis": "Type 2 Diabetes Mellitus",
+    "additional_conditions": ["Hypertension"],
+    "doctor_id": "660e8400-e29b-41d4-a716-446655440001",
+    "facility_ids": ["770e8400-e29b-41d4-a716-446655440002"]
+  }'
+```
+
+**Response includes:**
+- Primary suggestions (in-stock medications)
+- Alternate suggestions (out-of-stock alternatives)
+- Allergy alerts and interaction warnings
+- Ghana STG/EML guideline notes
+- Facility inventory details with pricing
+- Clinical rationale for each recommendation
+
+#### 5. Drug Authenticity Check
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/drug-authenticity/check" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "drug_name": "Paracetamol"
+  }'
+```
+
+**Response includes:**
+- Authentication status (authentic/counterfeit/unknown)
+- Confidence score (0.0 - 1.0)
+- Manufacturer information
+- FDA/regulatory approval status
+- Warning alerts
+- Verification sources with URLs
+
 ## Database Migrations
 
 Create a new migration:
@@ -313,28 +492,53 @@ The project follows a **feature-based modular architecture**:
    - Tavily API for web search
    - Streaming support (SSE)
 
-### Tool System Architecture
+### System Architecture
 
 ```
-User Request
-    ↓
-API Endpoint (/chat/with-tools or /chat/stream)
-    ↓
-Service Layer (process_chat_request_with_tools)
-    ↓
-AI Model with Tools (OpenRouter)
-    ↓
-Tool Execution (if needed)
-    ├── Tavily Web Search
-    ├── Lab Explanation Generator
-    ├── Imaging Analysis Generator
-    └── Medical Summary Generator
-    ↓
-AI Synthesis (with tool results)
-    ↓
-Response Generation + Artifacts
-    ↓
-User (via API or Stream)
+┌─────────────────────────────────────────────────────────────────┐
+│                         HUE-AI Platform                          │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+            ┌───────────────┼───────────────┬────────────────┐
+            ▼               ▼               ▼                ▼
+    ┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌────────────┐
+    │Multi-Disease │ │Drug Suggester│ │   Drug   │ │Healthcare  │
+    │   Detector   │ │              │ │Authenticity│ │ Platform   │
+    └──────┬───────┘ └──────┬───────┘ └────┬─────┘ └─────┬──────┘
+           │                │               │             │
+           ▼                ▼               ▼             ▼
+    ┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌──────────┐
+    │  OpenRouter  │ │  RxNav API   │ │  Tavily  │ │PostgreSQL│
+    │(Model)│        │(Interactions)│ │(Search)  │ │   DB     │
+    └──────────────┘ └──────────────┘ └──────────┘ └──────────┘
+```
+
+#### Multi-Disease Detector Flow
+
+```
+User Request → API Endpoint → Service Layer → AI Model (OpenRouter)
+                                   ↓
+                          Tool Execution (if needed)
+                    ├── Tavily Web Search
+                    ├── Lab Explanation Generator
+                    ├── Imaging Analysis Generator
+                    └── Medical Summary Generator
+                                   ↓
+                         AI Synthesis + Artifacts
+                                   ↓
+                          Response to User
+```
+
+#### Drug Suggester Flow
+
+```
+Request → Patient Context → Ghana Guidelines (Tavily)
+              ↓                      ↓
+         RxNav Check → AI Selection (OpenRouter)
+              ↓                      ↓
+       Inventory Match → Safety Validation
+              ↓                      ↓
+         Response with Recommendations
 ```
 
 ## ⚙️ System Requirements
@@ -414,8 +618,9 @@ User (via API or Stream)
    ```
 
 3. **Test the Tool**:
-   - Add test cases to `test_tools_and_streaming.py`
-   - Test via API endpoints
+   - Add test cases to test files
+   - Test via API endpoints using `/docs` interactive UI
+   - Verify streaming functionality with `test_streaming_fix.py`
 
 ### Environment Setup for Development
 
@@ -436,7 +641,9 @@ pip install pre-commit
 pre-commit install
 
 # Run tests
-python test_tools_and_streaming.py
+python test_drug_suggester_comprehensive.py
+python test_risk_assessment.py
+python test_streaming_fix.py
 ```
 
 ## 🐛 Troubleshooting
@@ -505,6 +712,31 @@ pip install --force-reinstall weasyprint
 - Consider caching common searches
 - Monitor API rate limits
 
+### RxNav Integration Issues
+
+**Issue**: Drug interaction checking not working
+```bash
+# Test RxNav API directly
+curl "https://rxnav.nlm.nih.gov/REST/interaction/list.json?rxcuis=207106+152923"
+
+# Check service logs for RxNav errors
+# Falls back gracefully to contraindication checking only
+```
+
+### Drug Suggester Issues
+
+**Issue**: No drug suggestions returned
+- Verify patient has required data (conditions, vitals)
+- Check facility inventory has drugs in stock
+- Review Ghana guidelines search results in logs
+- Ensure OpenRouter API key is valid
+- Check database for drug_codes table population
+
+**Issue**: Cache not working for RxNav
+- Verify `drug_interaction_cache` table exists
+- Check cache expiry (default: 7 days)
+- Review logs for cache hit/miss rates
+
 ## 🛠️ Technologies Used
 
 ### Backend
@@ -515,8 +747,10 @@ pip install --force-reinstall weasyprint
 - **Pydantic** - Data validation
 
 ### AI & ML
-- **OpenRouter** - AI model API (Google Gemini Flash 1.5)
-- **Tavily** - Web search API for current information
+- **OpenRouter** - AI model API gateway
+- **OpenAI gpt-oss-120b** - 117B parameter model for medical conversations
+- **Tavily** - Web search API for current medical information
+- **RxNav API** - NIH drug interaction database
 - **Tool Calling** - OpenRouter function calling format
 
 ### Document Generation
@@ -531,27 +765,40 @@ pip install --force-reinstall weasyprint
 ### API References
 - **OpenRouter**: https://openrouter.ai/docs
 - **Tavily**: https://tavily.com/docs
+- **RxNav API**: https://rxnav.nlm.nih.gov/
 - **FastAPI**: https://fastapi.tiangolo.com/
 
 ## 🎯 Use Cases
 
 ### For Patients
-- 📱 Quick symptom assessment
-- 📊 Understanding lab results
-- 🏥 Interpreting imaging reports
-- 💊 Medication information
-- 🔍 Current treatment guidelines
+- 📱 Quick symptom assessment with AI
+- 📊 Understanding lab results and test values
+- 🏥 Interpreting imaging reports (X-ray, CT, MRI)
+- 💊 Medication information and safety
+- 🔍 Access to current treatment guidelines
+- 🔎 Drug authenticity verification
 
 ### For Healthcare Providers
-- 📄 Generate patient-friendly explanations
-- 🔎 Quick reference to latest guidelines
+- 📄 Generate patient-friendly medical explanations
+- 💊 AI-powered drug suggestions with safety checks
+- 🔎 Quick reference to Ghana STG and EML
 - 📋 Pre-consultation patient insights
 - 📊 Visual reports for patient education
+- 🛡️ Automated interaction checking
+- 🏥 Multi-facility inventory management
+
+### For Pharmacists
+- 💊 Drug interaction checking via RxNav
+- 🏭 Drug authenticity verification
+- 📦 Inventory management across facilities
+- 💰 Pricing and stock level tracking
+- 📋 Prescription validation
 
 ### For Researchers
 - 🧬 Medical data management
 - 📈 Patient cohort tracking
 - 🔬 Clinical trial coordination
+- 📊 Drug suggestion audit trails
 
 ## 🚀 Deployment
 
@@ -624,23 +871,49 @@ Contributions are welcome! Here's how you can help:
 
 ### Development Guidelines
 - Follow PEP 8 style guide
-- Add docstrings to functions
-- Update documentation for new features
-- Add tests for new functionality
+- Add docstrings to functions and classes
+- Update main README and feature-specific READMEs
+- Add comprehensive tests for new functionality
 - Keep PRs focused and atomic
+- Use type hints for better code clarity
+- Log important operations and errors
+
+### Feature-Specific Documentation
+Each major feature has its own README:
+- `src/multi_disease_detector/README.md` - AI medical assistant details
+- `src/drug_suggester/README.md` - Drug suggestion system details
+
+When modifying features, update both the main README and feature README.
 
 ## 📊 Performance & Costs
 
 ### API Usage Costs
-- **OpenRouter**: Pay-per-use (typically $0.001-0.01 per request)
-- **Tavily**: Free tier ~1,000 searches/month, then $0.002 per search
-- **Combined**: Very affordable for most applications
+- **OpenRouter**: Pay-per-use (~$0.001-0.01 per request)
+- **Tavily** (Web Search): Free tier ~1,000 searches/month, then $0.002 per search
+- **RxNav API** (Drug Interactions): Free (NIH public API)
+- **Combined**: Very affordable for production applications
 
 ### Response Times
+
+**Multi-Disease Detector:**
 - Regular chat: 1-3 seconds
 - With web search: 3-5 seconds
 - With document generation: 5-8 seconds
-- Streaming starts: Immediate
+- Streaming: Immediate start
+
+**Drug Suggester:**
+- Average: 3-5 seconds
+- Components:
+  - Patient context: ~0.5s
+  - Tavily searches: ~1-2s
+  - RxNav checks: ~0.5s (cached) or ~2s (uncached)
+  - AI generation: ~2-3s
+  - Safety checks: ~0.5s
+
+**Drug Authenticity:**
+- Cached results: <100ms
+- New searches: 2-4 seconds
+- Cache duration: 30 days
 
 
 [Your License Here]
@@ -654,16 +927,18 @@ For questions, issues, or contributions:
 
 ## 🌟 Acknowledgments
 
-- OpenRouter for AI model access
-- Tavily for web search capabilities
-- FastAPI community
-- Open source contributors
+- **OpenRouter** for AI model access 
+- **Tavily** for real-time web search capabilities
+- **NIH RxNav** for comprehensive drug interaction database
+- **FastAPI** community for excellent framework and documentation
+- **Ghana Health Service** for STG and EML guidelines
+- Open source contributors worldwide
 
 ---
 
 **Built with ❤️ for better healthcare accessibility**
 
-**Version**: 2.0  
-**Last Updated**: October 2025  
-**Status**: Production Ready ✅
+**Version**: 2.1  
+**Last Updated**: November 2025  
+**Status**: Staging Ready ✅
 

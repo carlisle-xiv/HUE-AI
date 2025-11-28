@@ -38,6 +38,7 @@ class Prescription(SQLModel, table=True):
     doctor: "Doctor" = Relationship(back_populates="prescriptions")
     items: list["PrescriptionItem"] = Relationship(back_populates="prescription")
     drug_orders: list["DrugOrder"] = Relationship(back_populates="prescription")
+    drug_suggestion: Optional["DrugSuggestion"] = Relationship(back_populates="prescription_created")
 
 
 class PrescriptionItem(SQLModel, table=True):
@@ -72,4 +73,5 @@ if TYPE_CHECKING:
     from .appointments import Consultation
     from .reference import PharmacyCode
     from .pharmacy import DrugOrder
+    from .drug_suggester import DrugSuggestion
 
