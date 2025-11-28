@@ -83,7 +83,7 @@ Full-featured healthcare management system with:
 
 | Feature | Multi-Disease Detector | Drug Suggester | Drug Authenticity | Healthcare Platform |
 |---------|----------------------|----------------|-------------------|-------------------|
-| **AI Powered** | ✅ gpt-oss-120b | ✅ gpt-oss-120b | ✅ via web search | ❌ Traditional |
+| **AI Powered** | ✅ oss-120b   | ✅ oss-120b |     ✅ via web search | ❌ Traditional |
 | **Target Users** | Doctors(primarily), patients(casual) | Healthcare Providers | Everyone | Healthcare System |
 | **Primary Use** | Symptom analysis | Medication recommendations | Drug verification | Data management |
 | **Real-time Streaming** | ✅ Yes | ❌ No | ❌ No | N/A |
@@ -888,7 +888,7 @@ When modifying features, update both the main README and feature README.
 ## 📊 Performance & Costs
 
 ### API Usage Costs
-- **OpenRouter** (gpt-oss-120b): Pay-per-use (~$0.001-0.01 per request)
+- **OpenRouter**: Pay-per-use (~$0.001-0.01 per request)
 - **Tavily** (Web Search): Free tier ~1,000 searches/month, then $0.002 per search
 - **RxNav API** (Drug Interactions): Free (NIH public API)
 - **Combined**: Very affordable for production applications
@@ -927,7 +927,7 @@ For questions, issues, or contributions:
 
 ## 🌟 Acknowledgments
 
-- **OpenRouter** for AI model access (gpt-oss-120b)
+- **OpenRouter** for AI model access 
 - **Tavily** for real-time web search capabilities
 - **NIH RxNav** for comprehensive drug interaction database
 - **FastAPI** community for excellent framework and documentation
