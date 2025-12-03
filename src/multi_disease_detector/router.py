@@ -32,6 +32,8 @@ from .openai_schemas import OpenAIChatRequest, OpenAIChatResponse, ErrorResponse
 from .openai_service import process_openai_chat_request, process_openai_chat_request_streaming
 from .simplified_schemas import SimplifiedChatRequest, SimplifiedChatResponse
 from .simplified_service import process_simplified_chat_request, process_simplified_chat_streaming
+from .professional_schemas import ProfessionalChatRequest, ProfessionalChatResponse
+from .professional_service import process_professional_chat_request, process_professional_chat_streaming
 from .tools import get_tool_definitions
 
 # Configure logging
@@ -382,6 +384,235 @@ async def unified_chat(
         )
     except Exception as e:
         logger.error(f"Error in unified chat endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your request"
+        )
+
+
+# ===== PROFESSIONAL CHAT ENDPOINT (FOR MEDICAL PROFESSIONALS) =====
+
+@router.post("/v1/chat/professional")
+async def professional_chat(
+    request: ProfessionalChatRequest,
+    session_id: Optional[UUID] = Query(None, description="Optional session ID for conversation continuity"),
+    db: Session = Depends(get_db)
+):
+    """
+    **Professional Chat Endpoint for Medical Professionals**
+    
+    Expert-level clinical decision support for doctors, nurses, radiologists, and other healthcare professionals.
+    
+    This endpoint provides:
+    - ✅ Technical medical terminology and clinical language
+    - ✅ Differential diagnoses ranked by likelihood
+    - ✅ Evidence-based treatment recommendations with dosing
+    - ✅ Clinical guidelines references (ACC/AHA, ACOG, NCCN, etc.)
+    - ✅ Standardized imaging reporting (BI-RADS, Lung-RADS, LI-RADS, etc.)
+    - ✅ Risk stratification and urgency classification
+    - ✅ Streaming responses (`stream: true`)
+    - ✅ Medical image analysis for radiologists
+    
+    ---
+    
+    ## Request Format
+    
+    ```json
+    POST /api/v1/multi-disease-detector/v1/chat/professional?session_id=uuid-optional
+    
+    {
+      "message": "55M presenting with acute chest pain, diaphoretic. ECG shows ST elevation V2-V4. DDx and management?",
+      "professional_role": "physician",
+      "stream": false,
+      "clinical_context": {
+        "chief_complaint": "Chest pain",
+        "history_present_illness": "Acute onset 2 hours ago, crushing substernal pain",
+        "past_medical_history": ["HTN", "DM2", "Hyperlipidemia"],
+        "medications": ["Metformin", "Lisinopril"],
+        "vitals": {"BP": "168/95", "HR": 102, "SpO2": "94%"},
+        "labs": {"Troponin": "pending"}
+      },
+      "image": "base64-string-optional"
+    }
+    ```
+    
+    ### Professional Role Options
+    
+    - `physician` - Comprehensive clinical analysis with treatment protocols
+    - `radiologist` - Standardized imaging reports with classification systems
+    - `nurse` - Care planning, monitoring parameters, patient safety
+    - `pharmacist` - Drug interactions, dosing adjustments, monitoring
+    - `specialist` - In-depth specialty-specific analysis
+    - `resident` - Teaching-focused with clinical pearls
+    - `physician_assistant` / `nurse_practitioner` - Balanced clinical guidance
+    
+    ---
+    
+    ## Response Format
+    
+    ### Non-Streaming Response
+    
+    ```json
+    {
+      "session_id": "660e8400-e29b-41d4-a716-446655440001",
+      "message": "Clinical Analysis:\\n\\n**Differential Diagnosis:**\\n1. STEMI - Anterior Wall (HIGH likelihood)...",
+      "clinical_insights": {
+        "differential_diagnoses": [
+          {"condition": "STEMI", "likelihood": "HIGH", "rationale": "..."}
+        ],
+        "recommended_workup": ["Serial troponins", "Urgent cardiology consult"],
+        "treatment_considerations": [...],
+        "clinical_pearls": ["Door-to-balloon <90min critical"],
+        "red_flags": ["Hemodynamic instability"]
+      },
+      "imaging_findings": null,
+      "risk_stratification": "CRITICAL",
+      "urgency": "EMERGENT",
+      "references": ["ACC/AHA STEMI Guidelines 2021"],
+      "tools_used": ["tavily_web_search"],
+      "thinking_summary": "Analyzed ECG findings → Identified STEMI criteria → Generated management",
+      "clinical_caveat": "Clinical decision support only. Final decisions rest with treating provider."
+    }
+    ```
+    
+    ### Streaming Response (SSE)
+    
+    Set `"stream": true` in request body:
+    
+    ```
+    data: {"type":"clinical_thinking","data":"Analyzing presentation: acute chest pain with ST elevation..."}
+    
+    data: {"type":"content","data":"**Differential Diagnosis:**"}
+    
+    data: {"type":"tool","data":{"tool_name":"tavily_web_search","status":"calling"}}
+    
+    data: {"type":"imaging_analysis","data":"Analyzing imaging study..."}
+    
+    data: {"type":"complete","data":{"session_id":"...","risk_stratification":"CRITICAL","urgency":"EMERGENT"}}
+    
+    data: [DONE]
+    ```
+    
+    ---
+    
+    ## Event Types (Streaming)
+    
+    - **clinical_thinking**: Clinical reasoning process
+    - **content**: Response content chunks
+    - **differential**: Differential diagnosis updates
+    - **workup**: Recommended workup suggestions
+    - **imaging_analysis**: Radiological analysis (for images)
+    - **tool**: Tool usage (calling/completed)
+    - **complete**: Final event with metadata
+    - **error**: Error occurred
+    
+    ---
+    
+    ## Risk Stratification
+    
+    - **LOW**: Stable, outpatient management appropriate
+    - **MODERATE**: Close monitoring, consider admission
+    - **HIGH**: Likely requires admission, urgent intervention
+    - **CRITICAL**: Life-threatening, immediate intervention required
+    
+    ## Urgency Classification
+    
+    - **ROUTINE**: Standard outpatient timeframe
+    - **URGENT**: Within 24-48 hours
+    - **STAT**: Within hours
+    - **EMERGENT**: Immediate action required
+    
+    ---
+    
+    ## Examples
+    
+    ### Example 1: Physician Case Consultation
+    
+    ```bash
+    curl -X POST "http://localhost:8000/api/v1/multi-disease-detector/v1/chat/professional" \\
+      -H "Content-Type: application/json" \\
+      -d '{
+        "message": "65F with acute dyspnea, pleuritic chest pain, unilateral leg swelling. Wells score?",
+        "professional_role": "physician",
+        "clinical_context": {
+          "vitals": {"HR": 110, "RR": 24, "SpO2": "91%"},
+          "past_medical_history": ["Recent hip surgery"]
+        }
+      }'
+    ```
+    
+    ### Example 2: Radiologist Image Analysis
+    
+    ```python
+    import base64
+    import requests
+    
+    with open("chest_xray.jpg", "rb") as f:
+        image_base64 = base64.b64encode(f.read()).decode()
+    
+    response = requests.post(
+        "http://localhost:8000/api/v1/multi-disease-detector/v1/chat/professional",
+        json={
+            "message": "Evaluate this chest X-ray for pneumonia vs CHF",
+            "professional_role": "radiologist",
+            "image": image_base64,
+            "clinical_context": {
+                "chief_complaint": "Dyspnea",
+                "past_medical_history": ["CHF", "COPD"]
+            }
+        }
+    )
+    ```
+    
+    ### Example 3: Nursing Assessment
+    
+    ```bash
+    curl -X POST "http://localhost:8000/api/v1/multi-disease-detector/v1/chat/professional" \\
+      -H "Content-Type: application/json" \\
+      -d '{
+        "message": "Post-op day 1 hip replacement, fever 38.5C, wound erythema. Assessment and monitoring plan?",
+        "professional_role": "nurse"
+      }'
+    ```
+    
+    ---
+    
+    ## Notes
+    
+    - **For medical professionals only** - Responses use technical terminology
+    - **No patient-facing disclaimers** - Brief clinical caveats instead
+    - **Evidence-based** - References clinical guidelines and literature
+    - **Session continuity** - Use `session_id` for follow-up questions
+    - **Role-specific guidance** - Responses tailored to professional role
+    """
+    try:
+        # Handle streaming vs non-streaming
+        if request.stream:
+            logger.info(f"Processing professional streaming request (role: {request.professional_role})")
+            return StreamingResponse(
+                process_professional_chat_streaming(db, request, session_id),
+                media_type="text/event-stream",
+                headers={
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache, no-transform",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                    "X-Content-Type-Options": "nosniff",
+                }
+            )
+        else:
+            logger.info(f"Processing professional non-streaming request (role: {request.professional_role})")
+            response = await process_professional_chat_request(db, request, session_id)
+            return response
+    
+    except ValueError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error in professional chat endpoint: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your request"
