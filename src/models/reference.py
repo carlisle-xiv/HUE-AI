@@ -64,6 +64,9 @@ class PharmacyCode(SQLModel, table=True):
     prescription_items: list["PrescriptionItem"] = Relationship(back_populates="pharmacy_code")
     pharmacy_inventory: list["PharmacyInventory"] = Relationship(back_populates="pharmacy_code")
     drug_barcodes: list["DrugBarcode"] = Relationship(back_populates="pharmacy_code")
+    demand_forecasts: list["DemandForecast"] = Relationship(back_populates="drug")
+    demand_anomalies: list["DemandAnomaly"] = Relationship(back_populates="drug")
+    seasonality_patterns: list["SeasonalityPattern"] = Relationship(back_populates="drug")
 
 
 class MedicalCodeDrugMapping(SQLModel, table=True):
@@ -119,4 +122,7 @@ if TYPE_CHECKING:
     from .prescriptions import PrescriptionItem
     from .pharmacy import PharmacyInventory, DrugBarcode
     from .tests import TestOrder
+    from src.clinical_data_prediction.demand_forecasting.models import (
+        DemandForecast, DemandAnomaly, SeasonalityPattern
+    )
 

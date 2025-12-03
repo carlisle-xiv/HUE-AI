@@ -24,6 +24,10 @@ tokenizers==0.15.2
 torch==2.0.1
 numpy==1.26.4
 
+# Time Series Forecasting
+prophet==1.1.5
+pandas==2.1.4
+
 # Tool Integration
 tavily-python==0.3.0
 httpx==0.27.0

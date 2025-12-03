@@ -138,6 +138,14 @@ from .drug_suggester import (
     DrugSuggestion,
 )
 
+# Import clinical data prediction models - MIGRATION 14
+# Direct import to avoid circular dependency through router
+from src.clinical_data_prediction.demand_forecasting.models import (
+    DemandForecast,
+    DemandAnomaly,
+    SeasonalityPattern,
+)
+
 # Export all models - MIGRATION 1-3
 __all__ = [
     # Base
@@ -247,5 +255,10 @@ __all__ = [
     "PatientAllergy",
     "DrugInteractionCache",
     "DrugSuggestion",
+    
+    # Clinical Data Prediction - MIGRATION 14
+    "DemandForecast",
+    "DemandAnomaly",
+    "SeasonalityPattern",
 ]
 

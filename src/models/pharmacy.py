@@ -42,6 +42,8 @@ class Pharmacy(SQLModel, table=True):
     user: "User" = Relationship(back_populates="pharmacy")
     inventory: list["PharmacyInventory"] = Relationship(back_populates="pharmacy")
     drug_orders: list["DrugOrder"] = Relationship(back_populates="pharmacy")
+    demand_forecasts: list["DemandForecast"] = Relationship(back_populates="pharmacy")
+    demand_anomalies: list["DemandAnomaly"] = Relationship(back_populates="pharmacy")
 
 
 class PharmacyInventory(SQLModel, table=True):
@@ -174,4 +176,7 @@ if TYPE_CHECKING:
     from .patients import Patient
     from .reference import PharmacyCode
     from .prescriptions import Prescription
+    from src.clinical_data_prediction.demand_forecasting.models import (
+        DemandForecast, DemandAnomaly
+    )
 
