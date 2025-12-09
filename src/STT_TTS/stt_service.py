@@ -259,7 +259,7 @@ async def process_audio_stream(
     headers = service.get_auth_headers()
     
     try:
-        async with websockets.connect(url, extra_headers=headers) as ws:
+        async with websockets.connect(url, additional_headers=headers) as ws:
             # Send StartRecognition message
             start_msg = service.build_start_recognition_message(session)
             await ws.send(json.dumps(start_msg))

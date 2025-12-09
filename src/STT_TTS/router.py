@@ -332,7 +332,7 @@ async def transcribe_audio(
         # Connect to Speechmatics WebSocket
         async with websockets.connect(
             url,
-            extra_headers=headers,
+            additional_headers=headers,
             ping_interval=20,
             ping_timeout=20
         ) as sm_ws:
@@ -342,19 +342,42 @@ async def transcribe_audio(
             start_msg = stt_service.build_start_recognition_message(session)
             await sm_ws.send(json.dumps(start_msg))
             
-            # Wait for RecognitionStarted
-            response = await sm_ws.recv()
-            response_data = json.loads(response)
+            # Wait for RecognitionStarted (skip Info messages)
+            recognition_started = False
+            max_attempts = 10  # Prevent infinite loop
+            attempts = 0
             
-            if response_data.get("message") != "RecognitionStarted":
-                logger.error(f"Unexpected Speechmatics response: {response_data}")
+            while not recognition_started and attempts < max_attempts:
+                response = await sm_ws.recv()
+                response_data = json.loads(response)
+                msg_type = response_data.get("message")
+                
+                if msg_type == "RecognitionStarted":
+                    recognition_started = True
+                    logger.info("Speechmatics recognition started")
+                elif msg_type == "Info":
+                    # Informational message (e.g., concurrent session usage) - log and continue
+                    info_type = response_data.get("type", "unknown")
+                    logger.info(f"Speechmatics info ({info_type}): {response_data.get('reason', '')}")
+                elif msg_type == "Error":
+                    logger.error(f"Speechmatics error: {response_data}")
+                    await websocket.send_json({
+                        "event": "error",
+                        "error": f"Speechmatics error: {response_data.get('reason', 'Unknown')}"
+                    })
+                    return
+                else:
+                    logger.warning(f"Unexpected Speechmatics message while waiting for start: {response_data}")
+                
+                attempts += 1
+            
+            if not recognition_started:
+                logger.error("Failed to receive RecognitionStarted from Speechmatics")
                 await websocket.send_json({
                     "event": "error",
-                    "error": f"Speechmatics error: {response_data.get('reason', 'Unknown')}"
+                    "error": "Failed to start recognition - no response from Speechmatics"
                 })
                 return
-            
-            logger.info("Speechmatics recognition started")
             await websocket.send_json({"event": "started"})
             
             # Task to forward audio from client to Speechmatics
