@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STT WebSocket Test - Speechmatics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e4e4e7;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #a1a1aa;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a1a1aa;
+            margin-bottom: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .config-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .config-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .config-item label {
+            font-size: 0.8rem;
+            color: #a1a1aa;
+        }
+
+        .config-item input, .config-item select {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            color: #e4e4e7;
+            font-size: 0.9rem;
+            min-width: 120px;
+        }
+
+        .config-item input:focus, .config-item select:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e4e4e7;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #71717a;
+        }
+
+        .status-dot.connected {
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+
+        .status-dot.recording {
+            background: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .transcript-container {
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .transcript-line {
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .transcript-line.partial {
+            background: rgba(96, 165, 250, 0.1);
+            border-left: 3px solid #60a5fa;
+            color: #93c5fd;
+            font-style: italic;
+        }
+
+        .transcript-line.final {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 3px solid #22c55e;
+            color: #e4e4e7;
+        }
+
+        .transcript-line.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid #ef4444;
+            color: #fca5a5;
+        }
+
+        .transcript-line.system {
+            background: rgba(161, 161, 170, 0.1);
+            border-left: 3px solid #71717a;
+            color: #a1a1aa;
+            font-size: 0.85rem;
+        }
+
+        .transcript-meta {
+            font-size: 0.75rem;
+            color: #71717a;
+            margin-top: 0.25rem;
+        }
+
+        .log-container {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            color: #a1a1aa;
+        }
+
+        .log-entry.info { color: #60a5fa; }
+        .log-entry.success { color: #22c55e; }
+        .log-entry.error { color: #ef4444; }
+        .log-entry.warn { color: #f59e0b; }
+
+        .visualizer {
+            height: 60px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 0 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .visualizer-bar {
+            width: 4px;
+            background: linear-gradient(to top, #3b82f6, #8b5cf6);
+            border-radius: 2px;
+            transition: height 0.05s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #71717a;
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech-to-Text Test</h1>
+        <p class="subtitle">Real-time transcription using Speechmatics via WebSocket</p>
+
+        <!-- Configuration -->
+        <div class="card">
+            <div class="card-title">Configuration</div>
+            <div class="config-row">
+                <div class="config-item">
+                    <label>WebSocket URL</label>
+                    <input type="text" id="wsUrl" value="ws://localhost:8000/api/v1/stt-tts/transcribe" style="min-width: 350px;">
+                </div>
+                <div class="config-item">
+                    <label>Language</label>
+                    <select id="language">
+                        <option value="en" selected>English (en)</option>
+                        <option value="es">Spanish (es)</option>
+                        <option value="fr">French (fr)</option>
+                        <option value="de">German (de)</option>
+                        <option value="it">Italian (it)</option>
+                        <option value="pt">Portuguese (pt)</option>
+                        <option value="nl">Dutch (nl)</option>
+                        <option value="ja">Japanese (ja)</option>
+                        <option value="zh">Chinese (zh)</option>
+                    </select>
+                </div>
+                <div class="config-item">
+                    <label>Sample Rate</label>
+                    <select id="sampleRate">
+                        <option value="16000" selected>16000 Hz</option>
+                        <option value="8000">8000 Hz</option>
+                        <option value="44100">44100 Hz</option>
+                        <option value="48000">48000 Hz</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="card">
+            <div class="card-title">Controls</div>
+            <div class="visualizer" id="visualizer">
+                <!-- Audio visualizer bars will be added dynamically -->
+            </div>
+            <div class="controls">
+                <button id="startBtn" class="btn-primary">
+                    🎤 Start Recording
+                </button>
+                <button id="stopBtn" class="btn-danger" disabled>
+                    ⏹ Stop
+                </button>
+                <button id="clearBtn" class="btn-secondary">
+                    🗑 Clear
+                </button>
+                <div class="status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transcription Results -->
+        <div class="card">
+            <div class="card-title">Transcription</div>
+            <div class="transcript-container" id="transcriptContainer">
+                <div class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <p>Click "Start Recording" to begin transcription</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Log -->
+        <div class="card">
+            <div class="card-title">Debug Log</div>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const transcriptContainer = document.getElementById('transcriptContainer');
+        const logContainer = document.getElementById('logContainer');
+        const visualizer = document.getElementById('visualizer');
+        const wsUrlInput = document.getElementById('wsUrl');
+        const languageSelect = document.getElementById('language');
+        const sampleRateSelect = document.getElementById('sampleRate');
+
+        // State
+        let ws = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let processor = null;
+        let analyser = null;
+        let isRecording = false;
+        let visualizerBars = [];
+
+        // Initialize visualizer bars
+        function initVisualizer() {
+            visualizer.innerHTML = '';
+            visualizerBars = [];
+            for (let i = 0; i < 32; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'visualizer-bar';
+                bar.style.height = '4px';
+                visualizer.appendChild(bar);
+                visualizerBars.push(bar);
+            }
+        }
+
+        // Update visualizer with audio data
+        function updateVisualizer() {
+            if (!analyser || !isRecording) return;
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+
+            const step = Math.floor(dataArray.length / visualizerBars.length);
+            for (let i = 0; i < visualizerBars.length; i++) {
+                const value = dataArray[i * step];
+                const height = Math.max(4, (value / 255) * 50);
+                visualizerBars[i].style.height = `${height}px`;
+            }
+
+            if (isRecording) {
+                requestAnimationFrame(updateVisualizer);
+            }
+        }
+
+        // Logging
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Add transcript line
+        function addTranscript(text, type = 'final', meta = null) {
+            // Remove empty state if present
+            const emptyState = transcriptContainer.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            // For partial results, update existing partial or create new
+            if (type === 'partial') {
+                let existing = transcriptContainer.querySelector('.transcript-line.partial');
+                if (existing) {
+                    existing.querySelector('.transcript-text').textContent = text;
+                    return;
+                }
+            } else {
+                // Remove any partial when we get a final
+                const partial = transcriptContainer.querySelector('.transcript-line.partial');
+                if (partial) partial.remove();
+            }
+
+            const line = document.createElement('div');
+            line.className = `transcript-line ${type}`;
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'transcript-text';
+            textSpan.textContent = text;
+            line.appendChild(textSpan);
+
+            if (meta) {
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'transcript-meta';
+                metaDiv.textContent = meta;
+                line.appendChild(metaDiv);
+            }
+
+            transcriptContainer.appendChild(line);
+            transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+        }
+
+        // Update status
+        function setStatus(status, isConnected = false, isRecordingStatus = false) {
+            statusText.textContent = status;
+            statusDot.className = 'status-dot';
+            if (isRecordingStatus) {
+                statusDot.classList.add('recording');
+            } else if (isConnected) {
+                statusDot.classList.add('connected');
+            }
+        }
+
+        // Build WebSocket URL with params
+        function buildWsUrl() {
+            const baseUrl = wsUrlInput.value;
+            const language = languageSelect.value;
+            const sampleRate = sampleRateSelect.value;
+            return `${baseUrl}?language=${language}&sample_rate=${sampleRate}&enable_partials=true`;
+        }
+
+        // Start recording
+        async function startRecording() {
+            try {
+                log('Requesting microphone access...');
+                
+                const sampleRate = parseInt(sampleRateSelect.value);
+                
+                // Get microphone access
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: sampleRate,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+
+                log('Microphone access granted', 'success');
+
+                // Create audio context
+                audioContext = new AudioContext({ sampleRate: sampleRate });
+                const source = audioContext.createMediaStreamSource(mediaStream);
+
+                // Create analyser for visualization
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+
+                // Connect to WebSocket
+                const wsUrl = buildWsUrl();
+                log(`Connecting to ${wsUrl}...`);
+                
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    log('WebSocket connected', 'success');
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`Received: ${data.event}`, 'info');
+
+                        switch (data.event) {
+                            case 'ready':
+                                log('Server ready, waiting for recognition to start...', 'success');
+                                setStatus('Connecting...', true);
+                                break;
+
+                            case 'started':
+                                log('Recognition started - speak now!', 'success');
+                                setStatus('Recording', true, true);
+                                addTranscript('🎤 Recording started...', 'system');
+                                
+                                // Start sending audio
+                                startAudioProcessing(source, sampleRate);
+                                break;
+
+                            case 'partial':
+                                if (data.data && data.data.transcript) {
+                                    addTranscript(data.data.transcript, 'partial');
+                                }
+                                break;
+
+                            case 'transcript':
+                                if (data.data && data.data.transcript) {
+                                    const words = data.data.words;
+                                    let meta = null;
+                                    if (words && words.length > 0) {
+                                        const confidence = words.reduce((acc, w) => acc + (w.confidence || 0), 0) / words.length;
+                                        meta = `Confidence: ${(confidence * 100).toFixed(1)}%`;
+                                    }
+                                    addTranscript(data.data.transcript, 'final', meta);
+                                }
+                                break;
+
+                            case 'end':
+                                log('Transcription ended', 'info');
+                                addTranscript('📝 Transcription ended', 'system');
+                                break;
+
+                            case 'error':
+                                log(`Error: ${data.error}`, 'error');
+                                addTranscript(`Error: ${data.error}`, 'error');
+                                break;
+
+                            case 'warning':
+                                log(`Warning: ${data.data?.message || 'Unknown'}`, 'warn');
+                                break;
+
+                            default:
+                                log(`Unknown event: ${data.event}`, 'warn');
+                        }
+                    } catch (e) {
+                        log(`Parse error: ${e.message}`, 'error');
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    log(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+                };
+
+                ws.onclose = (event) => {
+                    log(`WebSocket closed: ${event.code} - ${event.reason || 'No reason'}`, 'info');
+                    stopRecording(false);
+                };
+
+                // Update UI
+                isRecording = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                initVisualizer();
+                updateVisualizer();
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                addTranscript(`Error: ${error.message}`, 'error');
+                stopRecording(false);
+            }
+        }
+
+        // Start audio processing and sending
+        function startAudioProcessing(source, sampleRate) {
+            // Use ScriptProcessor for compatibility (AudioWorklet would be better for production)
+            const bufferSize = 4096;
+            processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+            processor.onaudioprocess = (e) => {
+                if (!isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+                const inputData = e.inputBuffer.getChannelData(0);
+                
+                // Convert float32 to int16 PCM
+                const pcm16 = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) {
+                    const s = Math.max(-1, Math.min(1, inputData[i]));
+                    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+
+                // Send binary audio data
+                ws.send(pcm16.buffer);
+            };
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+        }
+
+        // Stop recording
+        function stopRecording(sendStop = true) {
+            isRecording = false;
+
+            // Send stop signal
+            if (sendStop && ws && ws.readyState === WebSocket.OPEN) {
+                log('Sending stop signal...', 'info');
+                ws.send(JSON.stringify({ event: 'stop' }));
+            }
+
+            // Close WebSocket
+            if (ws) {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+                ws = null;
+            }
+
+            // Stop audio processing
+            if (processor) {
+                processor.disconnect();
+                processor = null;
+            }
+
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            // Stop media stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+
+            // Reset visualizer
+            visualizerBars.forEach(bar => bar.style.height = '4px');
+
+            // Update UI
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            setStatus('Disconnected');
+
+            log('Recording stopped', 'info');
+        }
+
+        // Clear transcripts
+        function clearTranscripts() {
+            transcriptContainer.innerHTML = `
+                <div class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <p>Click "Start Recording" to begin transcription</p>
+                </div>
+            `;
+            logContainer.innerHTML = '';
+            log('Cleared', 'info');
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', () => stopRecording(true));
+        clearBtn.addEventListener('click', clearTranscripts);
+
+        // Initialize
+        initVisualizer();
+        log('Ready - click Start Recording to begin', 'success');
+    </script>
+</body>
+</html>
+

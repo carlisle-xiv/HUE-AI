@@ -42,3 +42,7 @@ pydantic-settings==2.6.1
 # API Documentation
 scalar-fastapi>=1.4.3
 
+# Speech-to-Text and Text-to-Speech (Speechmatics)
+speechmatics-python>=1.0.0
+websockets>=12.0
+
